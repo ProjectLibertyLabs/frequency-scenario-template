@@ -31,7 +31,7 @@
         "directory": "./tsconfig.json"
       },
       "node": {
-        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+        "extensions": [".js", ".jsx", ".ts", ".d.ts", ".tsx"]
       }
     },
     "react": {
@@ -39,6 +39,7 @@
     }
   },
   "rules": {
+    "camelcase": "off",
     "no-console": "off",
    "import/extensions": [
       "error",
@@ -50,7 +51,7 @@
         "tsx": "never"
       }
    ],
-    "import/no-unresolved": [2, { "commonjs": true, "amd": true }],
+  "import/no-unresolved": [2, { "commonjs": true, "amd": true }],
     "import/named": 2,
     "import/namespace": 2,
     "import/default": 2,

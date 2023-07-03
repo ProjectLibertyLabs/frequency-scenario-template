@@ -1,32 +1,35 @@
 {
-  "name": "reconnection-service",
+  "name": "frequency-scenario-template",
   "version": "1.0.0",
-  "description": "A microservice to reconnect graphs in DSNP/Frequency",
-  "main": "dist/main.js",
+  "description": "Scaffolding to enable streamlined scripting of local Frequency chain state for development",
   "scripts": {
-    "createMsa": "set -a ; source .env ; ts-node src/create-msa-example.ts"
+    "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
+    "createMsa": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/create-msa-example.ts",
+    "graph-migration-setup": "set -a ; source .env ; ts-node --esm src/graph-migration-setup.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AmplicaLabs/reconnection-service.git"
+    "url": "git+https://github.com/AmplicaLabs/frequency-scenario-template.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/AmplicaLabs/reconnection-service/issues"
+    "url": "https://github.com/AmplicaLabs/frequency-scenario-template/issues"
   },
-  "homepage": "https://github.com/AmplicaLabs/reconnection-service#readme",
+  "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
+    "@dsnp/frequency-schemas": "^1.0.1",
     "@frequency-chain/api-augment": "1.6.0",
     "@polkadot/api": "10.7.3",
     "@polkadot/keyring": "12.2.1",
     "@polkadot/types": "10.7.3",
     "@polkadot/util": "12.2.1",
+    "@polkadot/util-crypto": "12.2.1",
     "@types/minimist": "^1.2.2",
+    "@types/node": "^20.3.1",
     "minimist": "^1.2.8",
-    "rxjs": "^7.8.1",
-    "why-is-node-running": "^2.2.2"
+    "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@polkadot/typegen": "10.7.3",

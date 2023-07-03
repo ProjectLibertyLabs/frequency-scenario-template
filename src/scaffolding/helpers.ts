@@ -10,9 +10,6 @@ import { HandleResponse, MessageSourceId, PageHash } from '@frequency-chain/api-
 import assert from 'assert';
 import { firstValueFrom } from 'rxjs';
 import Keyring, { encodeAddress } from '@polkadot/keyring';
-import { AVRO_GRAPH_CHANGE } from './schemas/fixtures/avroGraphChangeSchemaType';
-import { PARQUET_BROADCAST } from './schemas/fixtures/parquetBroadcastSchemaType';
-import { AVRO_CHAT_MESSAGE } from './schemas/fixtures/itemizedSchemaType';
 import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers';
 import { env } from './env';
 import { createKeys as apiCreateKeys } from './apiConnection';
@@ -286,31 +283,6 @@ export async function setEpochLength(keys: KeyringPair, epochLength: number): Pr
   await setEpochLengthOp.sudoSignAndSend();
 }
 
-export async function getOrCreateGraphChangeSchema(): Promise<u16> {
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
-    const ROCOCO_GRAPH_CHANGE_SCHEMA_ID: u16 = new u16(ExtrinsicHelper.api.registry, 53);
-    return ROCOCO_GRAPH_CHANGE_SCHEMA_ID;
-  }
-  const [createSchemaEvent] = await ExtrinsicHelper.createSchema(devAccounts[0].keys, AVRO_GRAPH_CHANGE, 'AvroBinary', 'OnChain').fundAndSend();
-  if (createSchemaEvent && ExtrinsicHelper.api.events.schemas.SchemaCreated.is(createSchemaEvent)) {
-    return createSchemaEvent.data.schemaId;
-  }
-  return Promise.reject(new Error('failed to create a schema'));
-}
-
-export async function getOrCreateParquetBroadcastSchema(): Promise<u16> {
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
-    const ROCOCO_PARQUET_BROADCAST_SCHEMA_ID: u16 = new u16(ExtrinsicHelper.api.registry, 51);
-    return ROCOCO_PARQUET_BROADCAST_SCHEMA_ID;
-  }
-  const createSchema = ExtrinsicHelper.createSchema(devAccounts[0].keys, PARQUET_BROADCAST, 'Parquet', 'IPFS');
-  const [event] = await createSchema.fundAndSend();
-  if (event && createSchema.api.events.schemas.SchemaCreated.is(event)) {
-    return event.data.schemaId;
-  }
-  return Promise.reject(new Error('failed to create a schema'));
-}
-
 export async function getOrCreateDummySchema(): Promise<u16> {
   if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
     const ROCOCO_DUMMY_SCHEMA_ID: u16 = new u16(ExtrinsicHelper.api.registry, 52);
@@ -320,34 +292,6 @@ export async function getOrCreateDummySchema(): Promise<u16> {
   const [dummySchemaEvent] = await createDummySchema.fundAndSend();
   if (dummySchemaEvent && createDummySchema.api.events.schemas.SchemaCreated.is(dummySchemaEvent)) {
     return dummySchemaEvent.data.schemaId;
-  }
-  return Promise.reject(new Error('failed to create a schema'));
-}
-
-export async function getOrCreateAvroChatMessagePaginatedSchema(): Promise<u16> {
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
-    const ROCOCO_AVRO_CHAT_MESSAGE_PAGINATED: u16 = new u16(ExtrinsicHelper.api.registry, 55);
-    return ROCOCO_AVRO_CHAT_MESSAGE_PAGINATED;
-  }
-  // Create a schema for Paginated PayloadLocation
-  const createSchema = ExtrinsicHelper.createSchema(devAccounts[0].keys, AVRO_CHAT_MESSAGE, 'AvroBinary', 'Paginated');
-  const [event] = await createSchema.fundAndSend();
-  if (event && createSchema.api.events.schemas.SchemaCreated.is(event)) {
-    return event.data.schemaId;
-  }
-  return Promise.reject(new Error('failed to create a schema'));
-}
-
-export async function getOrCreateAvroChatMessageItemizedSchema(): Promise<u16> {
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
-    const ROCOCO_AVRO_CHAT_MESSAGE_ITEMIZED: u16 = new u16(ExtrinsicHelper.api.registry, 54);
-    return ROCOCO_AVRO_CHAT_MESSAGE_ITEMIZED;
-  }
-  // Create a schema for Paginated PayloadLocation
-  const createSchema = ExtrinsicHelper.createSchema(devAccounts[0].keys, AVRO_CHAT_MESSAGE, 'AvroBinary', 'Itemized');
-  const [event] = await createSchema.fundAndSend();
-  if (event && createSchema.api.events.schemas.SchemaCreated.is(event)) {
-    return event.data.schemaId;
   }
   return Promise.reject(new Error('failed to create a schema'));
 }

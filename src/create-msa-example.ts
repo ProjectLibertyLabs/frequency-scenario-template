@@ -8,6 +8,7 @@ import { mnemonicGenerate } from '@polkadot/util-crypto';
 import { ExtrinsicHelper } from './scaffolding/extrinsicHelpers';
 import { initialize, getDefaultFundingSource } from './scaffolding/helpers';
 import { createKeys } from './scaffolding/apiConnection';
+import { User } from './scaffolding/user';
 
 async function main() {
   // Connect to chain & initialize API
@@ -20,12 +21,9 @@ async function main() {
 
   // Sample application logic: Get/create keypair and create MSA
   const keys = createKeys(uri);
-  const op = ExtrinsicHelper.createMsa(keys);
-  const [createEvent] = await op.signAndSend();
-  if (!createEvent || !ExtrinsicHelper.api.events.msa.MsaCreated.is(createEvent)) {
-    throw new Error('MSA not created');
-  }
-  console.log(`Created MSA ID ${createEvent.data.msaId.toString()}`);
+  const user = new User(keys);
+  await user.createMsa();
+  console.log(`Created MSA ID ${user.msaId.toString()}`);
 }
 
 // Run the main program

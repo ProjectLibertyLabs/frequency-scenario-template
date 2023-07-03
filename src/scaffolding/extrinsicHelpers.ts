@@ -14,6 +14,7 @@ import {
   MessageSourceId,
   PaginatedStorageResponse,
   PresumptiveSuffixesResponse,
+  SchemaId,
   SchemaResponse,
 } from '@frequency-chain/api-augment/interfaces';
 import { u8aToHex } from '@polkadot/util/u8a/toHex';
@@ -33,8 +34,8 @@ export type ReleaseSchedule = {
 
 export type AddKeyData = { msaId?: u64; expiration?: any; newPublicKey?: any };
 export type AddProviderPayload = {
-  authorizedMsaId?: u64;
-  schemaIds?: u16[];
+  authorizedMsaId?: MessageSourceId;
+  schemaIds?: SchemaId[] | AnyNumber[];
   expiration?: any;
 };
 export type ItemizedSignaturePayload = {
@@ -229,11 +230,9 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
             acc.defaultEvent = event;
           }
           if (this.api.events.sudo.Sudid.is(event)) {
-            const {
-              data: [result],
-            } = event;
-            if (result.isErr) {
-              const err = new EventError(result.asErr);
+            const { sudoResult } = event.data;
+            if (sudoResult.isErr) {
+              const err = new EventError(sudoResult.asErr);
               log(err.toString());
               throw err;
             }
@@ -259,8 +258,6 @@ export class ExtrinsicHelper {
   public static api: ApiRx;
 
   public static apiPromise: ApiPromise;
-
-  constructor() {}
 
   public static async initialize(providerUrl?: string | string[] | undefined) {
     ExtrinsicHelper.api = await connect(providerUrl);
@@ -344,7 +341,6 @@ export class ExtrinsicHelper {
   }
 
   public static deletePublicKey(keys: KeyringPair, publicKey: Uint8Array): Extrinsic {
-    ExtrinsicHelper.api.query.msa;
     return new Extrinsic(() => ExtrinsicHelper.api.tx.msa.deleteMsaPublicKey(publicKey), keys, ExtrinsicHelper.api.events.msa.PublicKeyDeleted);
   }
 
@@ -528,7 +524,9 @@ export class ExtrinsicHelper {
   public static async run_to_block(blockNumber: number) {
     let currentBlock = await getBlockNumber();
     while (currentBlock < blockNumber) {
+      // eslint-disable-next-line no-await-in-loop
       await ExtrinsicHelper.mine();
+      // eslint-disable-next-line no-await-in-loop
       currentBlock = await getBlockNumber();
     }
   }
