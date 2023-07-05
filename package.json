@@ -20,7 +20,7 @@
   "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
     "@dsnp/frequency-schemas": "^1.0.1",
-    "@frequency-chain/api-augment": "1.6.0",
+    "@frequency-chain/api-augment": "1.7.0",
     "@polkadot/api": "10.7.3",
     "@polkadot/keyring": "12.2.1",
     "@polkadot/types": "10.7.3",
