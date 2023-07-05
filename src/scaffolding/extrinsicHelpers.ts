@@ -24,6 +24,7 @@ import { KeyringPair } from '@polkadot/keyring/types';
 import { connect, connectPromise } from './apiConnection';
 // eslint-disable-next-line import/no-cycle
 import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers';
+import { ModelTypeStr, PayloadLocationStr, SchemaSettingStr } from './schema';
 
 export type ReleaseSchedule = {
   start: number;
@@ -298,9 +299,12 @@ export class ExtrinsicHelper {
   }
 
   /** Schema Extrinsics */
-  public static createSchema(keys: KeyringPair, model: any, modelType: 'AvroBinary' | 'Parquet', payloadLocation: 'OnChain' | 'IPFS' | 'Itemized' | 'Paginated'): Extrinsic {
+  public static createSchema(keys: KeyringPair, model: any, modelType: ModelTypeStr, payloadLocation: PayloadLocationStr): Extrinsic {
+    // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
+    // We'll just force to an actual PayloadLocation to resolve.
+    const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchema(JSON.stringify(model), modelType, payloadLocation),
+      () => ExtrinsicHelper.api.tx.schemas.createSchema(JSON.stringify(model), modelType, payloadLocationReal),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );
@@ -311,12 +315,15 @@ export class ExtrinsicHelper {
     delegatorKeys: KeyringPair,
     keys: KeyringPair,
     model: any,
-    modelType: 'AvroBinary' | 'Parquet',
-    payloadLocation: 'OnChain' | 'IPFS' | 'Itemized' | 'Paginated',
-    grant: 'AppendOnly' | 'SignatureRequired',
+    modelType: ModelTypeStr,
+    payloadLocation: PayloadLocationStr,
+    grant: SchemaSettingStr,
   ): Extrinsic {
+    // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
+    // We'll just force to an actual PayloadLocation to resolve.
+    const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernance(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocation, [grant]),
+      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernance(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, [grant]),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );

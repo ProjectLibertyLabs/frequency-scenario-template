@@ -3,49 +3,41 @@
  * and do a basic chain operation.
  */
 
-import { SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { userPrivateConnections, userPrivateFollows, publicKey } from '@dsnp/frequency-schemas/dsnp';
-import { ExtrinsicHelper } from './scaffolding/extrinsicHelpers.js';
-import { initialize, devAccounts } from './scaffolding/helpers.js';
+import { userPrivateConnections, userPrivateFollows, publicKey, userPublicFollows } from '@dsnp/frequency-schemas/dsnp/index';
+import { ExtrinsicHelper } from './scaffolding/extrinsicHelpers';
+import { initialize, devAccounts } from './scaffolding/helpers';
 import { User } from './scaffolding/user';
-
-let privateFriendSchemaId: SchemaId;
-let privateFollowSchemaId: SchemaId;
-let publicKeySchemaId: SchemaId;
+import { SchemaBuilder } from './scaffolding/schema-builder';
+import { UserBuilder } from './scaffolding/user-builder';
 
 async function main() {
   // Connect to chain & initialize API
   await initialize();
 
   // Create graph schemata
-  let [schemaCreatedEvent] = await ExtrinsicHelper.createSchema(devAccounts[0].keys, userPrivateConnections, 'AvroBinary', 'Paginated').signAndSend();
-  if (!ExtrinsicHelper.api.events.schemas.SchemaCreated.is(schemaCreatedEvent)) {
-    throw new Error('graph schema not created');
-  }
-  privateFriendSchemaId = schemaCreatedEvent.data.schemaId;
-
-  [schemaCreatedEvent] = await ExtrinsicHelper.createSchema(devAccounts[0].keys, userPrivateFollows, 'AvroBinary', 'Itemized').signAndSend();
-  if (!ExtrinsicHelper.api.events.schemas.SchemaCreated.is(schemaCreatedEvent)) {
-    throw new Error('graph key schema not created');
-  }
-  privateFollowSchemaId = schemaCreatedEvent.data.schemaId;
-
-  [schemaCreatedEvent] = await ExtrinsicHelper.createSchema(devAccounts[0].keys, publicKey, 'AvroBinary', 'Itemized').signAndSend();
-  if (!ExtrinsicHelper.api.events.schemas.SchemaCreated.is(schemaCreatedEvent)) {
-    throw new Error('graph key schema not created');
-  }
-  publicKeySchemaId = schemaCreatedEvent.data.schemaId;
+  const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated');
+  const publicFollowSchema = await schemaBuilder.withModel(userPublicFollows).build(devAccounts[0].keys);
+  const privateFollowSchema = await schemaBuilder.withModel(userPrivateFollows).build(devAccounts[0].keys);
+  const privateFriendSchema = await schemaBuilder.withModel(userPrivateConnections).build(devAccounts[0].keys);
+  const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).build(devAccounts[0].keys);
 
   // Create MSAs and register a Provider
-  const alice = new User(devAccounts[0].keys);
-  await alice.createMsa();
-  const provider = new User(devAccounts[4].keys);
-  await provider.createMsa();
-  await provider.registerAsProvider('FerdieNet');
+  const builder = new UserBuilder();
+  const provider = await builder.withKeypair(devAccounts[4].keys).asProvider('FerdieNet').build();
 
-  // Perform Provider delegations
-  await alice.grantDelegation(provider, [privateFollowSchemaId, privateFriendSchemaId, publicKeySchemaId]);
-  console.log('foo');
+  const alice = await builder
+    .withKeypair(devAccounts[0].keys)
+    .withDelegation(provider, [publicFollowSchema.id, privateFollowSchema.id, privateFriendSchema.id, publicKeySchema.id])
+    .build();
+
+  console.log(`
+  Public Graph Schema ID: ${publicFollowSchema.id.toNumber()}
+  Follow(Private) Schema ID: ${privateFollowSchema.id.toNumber()}
+  Friendship(Private) Schema ID: ${privateFriendSchema.id.toNumber()}
+
+  User (Alice) MSA ID: ${alice.msaId.toString()}
+  Provider (Ferdie) ID: ${provider.providerId.toString()}
+  `);
 }
 
 // Run the main program

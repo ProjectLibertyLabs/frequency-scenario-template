@@ -6,25 +6,24 @@ import { createKeys, generateAddKeyPayload, generateDelegationPayload, signPaylo
 import { ExtrinsicHelper } from './extrinsicHelpers';
 
 export class User {
-  private _msaId: MessageSourceId;
+  public msaId: MessageSourceId;
 
-  private _providerId: ProviderId;
+  public providerId: ProviderId;
 
   private _keypair: KeyringPair;
 
   private _allKeys: KeyringPair[] = [];
 
-  constructor(keypair?: KeyringPair) {
+  constructor(keypair?: KeyringPair, msaId?: MessageSourceId, providerId?: ProviderId) {
     this._keypair = keypair ?? createKeys();
     this._allKeys.push(this._keypair);
-  }
+    if (msaId !== undefined) {
+      this.msaId = msaId;
+    }
 
-  public get msaId() {
-    return this._msaId;
-  }
-
-  public get providerId() {
-    return this._providerId;
+    if (providerId !== undefined) {
+      this.providerId = providerId;
+    }
   }
 
   public get keypair() {
@@ -32,7 +31,7 @@ export class User {
   }
 
   public get isProvider(): boolean {
-    return this._providerId !== undefined;
+    return this.providerId !== undefined;
   }
 
   public async createMsa(): Promise<void> {
@@ -40,12 +39,12 @@ export class User {
     if (!ExtrinsicHelper.api.events.msa.MsaCreated.is(result)) {
       throw new Error('failed to create MSA');
     }
-    this._msaId = result.data.msaId;
+    this.msaId = result.data.msaId;
   }
 
   public async addPublicKeyToMsa(keys: KeyringPair) {
     const payload = await generateAddKeyPayload({
-      msaId: this._msaId,
+      msaId: this.msaId,
       newPublicKey: keys.publicKey,
     });
     const addKeyData = ExtrinsicHelper.api.registry.createType('PalletMsaAddKeyData', payload);
@@ -64,7 +63,7 @@ export class User {
     }
 
     const { providerId } = result.data;
-    this._providerId = providerId;
+    this.providerId = providerId;
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
@@ -82,7 +81,7 @@ export class User {
       throw new Error(`User ${provider.providerId.toString()} is not a provider`);
     }
 
-    if (this._msaId !== undefined) {
+    if (this.msaId !== undefined) {
       throw new Error('Cannot create a sponsored account for a user that already has an MSA');
     }
 
@@ -94,7 +93,7 @@ export class User {
     }
 
     if (eventMap['msa.DelegationGranted'] === undefined) {
-      throw new Error(`MSA account created, but delegation not granted to provider ${this._providerId.toString()}`);
+      throw new Error(`MSA account created, but delegation not granted to provider ${this.providerId.toString()}`);
     }
   }
 }
