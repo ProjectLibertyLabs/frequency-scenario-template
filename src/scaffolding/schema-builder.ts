@@ -83,7 +83,7 @@ export class SchemaBuilder {
       schema.model,
       schema.model_type.type,
       schema.payload_location.type,
-      schema.setting.toArray().map((setting) => setting.type),
+      schema.settings.toArray().map((setting) => setting.type),
     );
   }
 }
