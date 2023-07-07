@@ -2,75 +2,97 @@
 import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
-import { createKeys, generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519 } from './helpers';
-import { ExtrinsicHelper } from './extrinsicHelpers';
+import { firstValueFrom } from 'rxjs';
+import { generateAddKeyPayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
+import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 
-export class User {
+export interface IUser {
+  msaId: MessageSourceId;
+  providerId?: ProviderId;
+  providerName?: string;
+  allKeys: KeyringPair[];
+  fundingSource?: KeyringPair;
+}
+export class User implements IUser {
   public msaId: MessageSourceId;
 
-  public providerId: ProviderId;
+  public providerId?: ProviderId;
 
-  private _keypair: KeyringPair;
+  public providerName?: string;
 
-  private _allKeys: KeyringPair[] = [];
+  public allKeys: KeyringPair[] = [];
 
-  constructor(keypair?: KeyringPair, msaId?: MessageSourceId, providerId?: ProviderId) {
-    this._keypair = keypair ?? createKeys();
-    this._allKeys.push(this._keypair);
-    if (msaId !== undefined) {
-      this.msaId = msaId;
-    }
+  public fundingSource?: KeyringPair;
 
-    if (providerId !== undefined) {
-      this.providerId = providerId;
-    }
-  }
+  public paysWithCapacity: boolean = false;
 
-  public get keypair() {
-    return this._keypair;
+  constructor({ allKeys, msaId, providerId, providerName, fundingSource }: IUser) {
+    this.allKeys = allKeys;
+    this.msaId = msaId;
+    this.providerId = providerId;
+    this.providerName = providerName;
+    this.fundingSource = fundingSource;
   }
 
   public get isProvider(): boolean {
     return this.providerId !== undefined;
   }
 
-  public async createMsa(): Promise<void> {
-    const [result] = await ExtrinsicHelper.createMsa(this.keypair).signAndSend();
-    if (!ExtrinsicHelper.api.events.msa.MsaCreated.is(result)) {
-      throw new Error('failed to create MSA');
-    }
-    this.msaId = result.data.msaId;
+  public get keypair(): KeyringPair {
+    return this.allKeys[0];
   }
 
-  public async addPublicKeyToMsa(keys: KeyringPair) {
+  private executeOp(op: Extrinsic) {
+    return this.paysWithCapacity ? op.payWithCapacity() : this.fundingSource ? op.fundAndSend(this.fundingSource) : op.signAndSend();
+  }
+
+  public async addKeypair(keys: KeyringPair) {
     const payload = await generateAddKeyPayload({
       msaId: this.msaId,
       newPublicKey: keys.publicKey,
     });
     const addKeyData = ExtrinsicHelper.api.registry.createType('PalletMsaAddKeyData', payload);
-    const ownerSig = signPayloadSr25519(this._allKeys[0], addKeyData);
+    const ownerSig = signPayloadSr25519(this.allKeys[0], addKeyData);
     const newSig = signPayloadSr25519(keys, addKeyData);
-    const [result] = await ExtrinsicHelper.addPublicKeyToMsa(keys, ownerSig, newSig, payload).fundAndSend();
+    const op = ExtrinsicHelper.addPublicKeyToMsa(keys, ownerSig, newSig, payload);
+    const [result] = await this.executeOp(op);
     if (result === undefined) {
       throw new Error(`failed to authorize new keypair for MSA ${this.msaId.toString()}`);
     }
   }
 
-  public async registerAsProvider(name: string) {
-    const [result] = await ExtrinsicHelper.createProvider(this.keypair, name).signAndSend();
-    if (!ExtrinsicHelper.api.events.msa.ProviderCreated.is(result)) {
-      throw new Error(`failed to register ${name} as provider`);
-    }
+  public async stakeToProvider(provider: ProviderId, amount: bigint) {
+    const op = ExtrinsicHelper.stake(this.keypair, provider, amount);
+    return this.executeOp(op);
+  }
 
-    const { providerId } = result.data;
-    this.providerId = providerId;
+  public async registerAsProvider(name: string) {
+    const providerRegistryEntryOption = await firstValueFrom(ExtrinsicHelper.api.query.msa.providerToRegistryEntry(this.msaId));
+    if (providerRegistryEntryOption.isNone) {
+      const op = ExtrinsicHelper.createProvider(this.keypair, name);
+      const [result] = await this.executeOp(op);
+      if (!ExtrinsicHelper.api.events.msa.ProviderCreated.is(result)) {
+        throw new Error(`failed to register ${name} as provider`);
+      }
+
+      const { providerId } = result.data;
+      this.providerId = providerId;
+      this.providerName = name;
+    } else {
+      const { providerName } = providerRegistryEntryOption.unwrap();
+      this.providerName = providerName.toString();
+      if (providerName.toString() !== name) {
+        console.log(`Overriding requested Provider name ${name} with existing name ${this.providerName}`);
+      }
+    }
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
     const payload = await generateDelegationPayload({ authorizedMsaId: provider.msaId, schemaIds });
     const addProviderData = ExtrinsicHelper.api.registry.createType('PalletMsaAddProvider', payload);
-    const signature = signPayloadSr25519(this._keypair, addProviderData);
-    const [result] = await ExtrinsicHelper.grantDelegation(this.keypair, provider.keypair, signature, payload).signAndSend();
+    const signature = signPayloadSr25519(this.keypair, addProviderData);
+    const op = ExtrinsicHelper.grantDelegation(this.keypair, provider.keypair, signature, payload);
+    const [result] = await this.executeOp(op);
     if (!ExtrinsicHelper.api.events.msa.DelegationGranted.is(result)) {
       throw new Error(`failed to grant delegation for user ${this.msaId} to provider ${provider.msaId}`);
     }
@@ -78,7 +100,7 @@ export class User {
 
   public async createMsaAsDelegatedAccount(provider: User, schemaIds?: SchemaId[]) {
     if (!provider.isProvider) {
-      throw new Error(`User ${provider.providerId.toString()} is not a provider`);
+      throw new Error(`User ${provider.providerId?.toString()} is not a provider`);
     }
 
     if (this.msaId !== undefined) {
@@ -87,13 +109,14 @@ export class User {
 
     const payload = await generateDelegationPayload({ authorizedMsaId: provider.providerId, schemaIds });
     const signature = signPayloadSr25519(this.keypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
-    const [result, eventMap] = await ExtrinsicHelper.createSponsoredAccountWithDelegation(this.keypair, provider.keypair, signature, payload).fundAndSend();
+    const op = ExtrinsicHelper.createSponsoredAccountWithDelegation(this.keypair, provider.keypair, signature, payload);
+    const [result, eventMap] = await this.executeOp(op);
     if (!ExtrinsicHelper.api.events.msa.MsaCreated.is(result)) {
       throw new Error(`Delegated MSA not created`);
     }
 
     if (eventMap['msa.DelegationGranted'] === undefined) {
-      throw new Error(`MSA account created, but delegation not granted to provider ${this.providerId.toString()}`);
+      throw new Error(`MSA account created, but delegation not granted to provider ${this.providerId?.toString()}`);
     }
   }
 }
