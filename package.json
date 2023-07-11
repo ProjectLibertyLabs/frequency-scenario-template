@@ -20,7 +20,7 @@
   "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
     "@dsnp/frequency-schemas": "^1.0.1",
-    "@dsnp/graph-sdk": "/Users/joecaputo/src/LibertyDSNP/graph-sdk/bridge/node/dsnp-graph-sdk-0.0.2.tgz",
+    "@dsnp/graph-sdk": "0.0.3",
     "@frequency-chain/api-augment": "1.7.0",
     "@polkadot/api": "10.7.3",
     "@polkadot/keyring": "12.2.1",
@@ -30,12 +30,10 @@
     "@types/minimist": "^1.2.2",
     "@types/node": "^20.3.1",
     "minimist": "^1.2.8",
-    "npmlog": "^7.0.1",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {
     "@polkadot/typegen": "10.7.3",
-    "@types/npmlog": "^4.1.4",
     "@typescript-eslint/parser": "^5.59.8",
     "@typescript-eslint/typescript-estree": "5.59.8",
     "eslint": "^8.42.0",
@@ -48,6 +46,7 @@
     "eslint-plugin-nestjs": "^1.2.3",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-promise": "^6.1.1",
+    "loglevel": "^1.8.1",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",

@@ -5,7 +5,7 @@
 
 import minimist from 'minimist';
 import { mnemonicGenerate } from '@polkadot/util-crypto';
-import * as log from 'npmlog';
+import * as log from 'loglevel';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, getDefaultFundingSource } from '../scaffolding/helpers';
 import { UserBuilder } from '../scaffolding/user-builder';

@@ -43,7 +43,11 @@ export class User implements IUser {
   }
 
   private executeOp(op: Extrinsic) {
-    return this.paysWithCapacity ? op.payWithCapacity() : this.fundingSource ? op.fundAndSend(this.fundingSource) : op.signAndSend();
+    if (this.paysWithCapacity) {
+      return op.payWithCapacity();
+    }
+
+    return this.fundingSource ? op.fundAndSend(this.fundingSource) : op.signAndSend();
   }
 
   public async addKeypair(keys: KeyringPair) {

@@ -2,7 +2,7 @@ import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augm
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import { firstValueFrom } from 'rxjs';
-import * as log from 'npmlog';
+import * as log from 'loglevel';
 import { IUser, User } from './user';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';

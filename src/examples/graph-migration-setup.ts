@@ -17,15 +17,19 @@ import {
   Connection,
   ConnectionType,
   PrivacyType,
+  ImportBundleBuilder,
+  Update,
+  PersistPageUpdate,
 } from '@dsnp/graph-sdk';
 import { firstValueFrom } from 'rxjs';
-import * as log from 'npmlog';
+import * as log from 'loglevel';
+import { PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
 import { UserBuilder } from '../scaffolding/user-builder';
 
-function getTestConfig(schemaMap: { [key: number]: SchemaConfig }): Config {
+function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
   config.sdkMaxStaleFriendshipDays = 100;
   config.maxPageId = 100;
@@ -33,13 +37,14 @@ function getTestConfig(schemaMap: { [key: number]: SchemaConfig }): Config {
   config.maxGraphPageSizeBytes = 100;
   config.maxKeyPageSizeBytes = 100;
   config.schemaMap = schemaMap;
+  config.graphPublicKeySchemaId = keySchemaId.toNumber();
   return config;
 }
 
 async function main() {
   // Connect to chain & initialize API
   await initialize();
-  // log.level = 'verbose';
+  log.setLevel('trace');
 
   // Create graph schemata
   const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
@@ -97,16 +102,56 @@ async function main() {
     privacyType: PrivacyType.Private,
   };
 
-  const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap) };
+  const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap, publicKeySchema.id) };
   const graph = new Graph(environment);
 
   // Fetch Alice's public follow graph
-  const pages = await firstValueFrom(
-    ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public)),
-  );
+  const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
+  const pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
 
-  const pageArray = pages.toArray();
-  log.verbose(pageArray);
+  const pageArray: PaginatedStorageResponse[] = pages.toArray();
+  log.debug(pageArray);
+
+  const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(alice.msaId.toString());
+  let bb = bundleBuilder.withDsnpKeys({ dsnpUserId: alice.msaId.toString(), keys: [], keysHash: 0 }).withSchemaId(schemaId);
+  pageArray.forEach((page) => {
+    bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
+  });
+
+  const importBundle = bb.build();
+
+  await graph.importUserData([importBundle]);
+
+  const actions: ConnectAction[] = [];
+  [bob, charlie, dave, eve].forEach((user) => {
+    const connection: ConnectAction = {
+      type: 'Connect',
+      ownerDsnpUserId: alice.msaId.toString(),
+      connection: {
+        dsnpUserId: user.msaId.toString(),
+        schemaId,
+      },
+    };
+    actions.push(connection);
+  });
+
+  // Add connections
+  await graph.applyActions(actions);
+
+  const exportBundles: Update[] = await graph.exportUpdates();
+
+  exportBundles.forEach(async (bundle) => {
+    let op: any;
+    switch (bundle.type) {
+      case 'PersistPage':
+        op = ExtrinsicHelper.upsertPage(alice.keypair, schemaId, alice.msaId, bundle.ownerDsnpUserId, bundle.payload, bundle.prevHash);
+        await op.fundAndSend();
+        break;
+
+      default:
+        break;
+    }
+  });
 }
 
 // Run the main program
