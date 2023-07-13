@@ -3,27 +3,27 @@
  * and do a basic chain operation.
  */
 
-import { userPrivateConnections, userPrivateFollows, publicKey, userPublicFollows } from '@dsnp/frequency-schemas/dsnp/index';
+import { userPrivateConnections, userPrivateFollows, publicKey, userPublicFollows } from '@dsnp/frequency-schemas/dsnp';
 import {
   Config,
   SchemaConfig,
   DsnpVersion,
   Graph,
   DevEnvironment,
-  Action,
   DsnpKeys,
   EnvironmentType,
   ConnectAction,
-  Connection,
   ConnectionType,
   PrivacyType,
   ImportBundleBuilder,
   Update,
-  PersistPageUpdate,
+  KeyData,
 } from '@dsnp/graph-sdk';
 import { firstValueFrom } from 'rxjs';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import { PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import { User } from '#app/scaffolding/user';
+import { assert } from '@polkadot/util';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
@@ -39,6 +39,27 @@ function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: 
   config.schemaMap = schemaMap;
   config.graphPublicKeySchemaId = keySchemaId.toNumber();
   return config;
+}
+
+function createConnection(from: User, to: User, schemaId: number, toKeys?: { keys: KeyData[]; keysHash: number }): ConnectAction {
+  const connection = {
+    type: 'Connect',
+    ownerDsnpUserId: from.msaId.toString(),
+    connection: {
+      dsnpUserId: to.msaId.toString(),
+      schemaId,
+    },
+  } as ConnectAction;
+
+  if (toKeys) {
+    connection.dsnpKeys = {
+      dsnpUserId: to.msaId.toString(),
+      keys: toKeys.keys,
+      keysHash: toKeys.keysHash,
+    } as DsnpKeys;
+  }
+
+  return connection;
 }
 
 async function main() {
@@ -80,6 +101,7 @@ async function main() {
   User (Eve) MSA ID: ${eve.msaId.toString()}
   Provider (Ferdie) ID: ${provider.providerId?.toString()}
   `);
+
   const schemaMap: { [key: number]: SchemaConfig } = {};
   schemaMap[publicFollowSchema.id.toNumber()] = {
     dsnpVersion: DsnpVersion.Version1_0,
@@ -101,57 +123,71 @@ async function main() {
     connectionType: ConnectionType.Friendship,
     privacyType: PrivacyType.Private,
   };
-
+  const a = ExtrinsicHelper.api.consts.frequencyTxPayment.maximumCapacityBatchLength;
+  console.log(`Max capacity batch: ${a}`);
   const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap, publicKeySchema.id) };
   const graph = new Graph(environment);
 
   // Fetch Alice's public follow graph
+  log.debug('Retrieving graph from chain');
   const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
-  const pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+  let pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
 
-  const pageArray: PaginatedStorageResponse[] = pages.toArray();
-  log.debug(pageArray);
-
-  const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(alice.msaId.toString());
-  let bb = bundleBuilder.withDsnpKeys({ dsnpUserId: alice.msaId.toString(), keys: [], keysHash: 0 }).withSchemaId(schemaId);
-  pageArray.forEach((page) => {
-    bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
-  });
-
-  const importBundle = bb.build();
-
-  await graph.importUserData([importBundle]);
+  let pageArray: PaginatedStorageResponse[] = pages.toArray();
 
   const actions: ConnectAction[] = [];
-  [bob, charlie, dave, eve].forEach((user) => {
-    const connection: ConnectAction = {
-      type: 'Connect',
-      ownerDsnpUserId: alice.msaId.toString(),
-      connection: {
-        dsnpUserId: user.msaId.toString(),
-        schemaId,
-      },
-    };
-    actions.push(connection);
-  });
+
+  // Remove the whole graph
+  log.info('Removing all pages from graph');
+  const removals = pageArray.map((page) => ExtrinsicHelper.removePage(alice.keypair, 1, alice.msaId, page.page_id, page.content_hash).fundAndSend());
+  await Promise.all(removals);
 
   // Add connections
+  [bob, charlie, dave, eve].forEach((user) => {
+    actions.push(createConnection(alice, user, schemaId));
+  });
+  log.info('Applying connections to graph');
   await graph.applyActions(actions);
 
+  // Export graph to chain
+  log.info('Getting export bundles...');
   const exportBundles: Update[] = await graph.exportUpdates();
 
-  exportBundles.forEach(async (bundle) => {
+  const promises: Promise<any>[] = [];
+  exportBundles.forEach((bundle) => {
     let op: any;
     switch (bundle.type) {
       case 'PersistPage':
-        op = ExtrinsicHelper.upsertPage(alice.keypair, schemaId, alice.msaId, bundle.ownerDsnpUserId, bundle.payload, bundle.prevHash);
-        await op.fundAndSend();
+        op = ExtrinsicHelper.upsertPage(alice.keypair, schemaId, alice.msaId, bundle.pageId, Array.from(Array.prototype.slice.call(bundle.payload)), 0); // hash is zero because graphs have been deleted
+
+        promises.push(op.fundAndSend());
         break;
 
       default:
         break;
     }
   });
+  log.info('Writing graph updates to the chain');
+  await Promise.all(promises);
+
+  // Read the graph back in from the chain to verify
+  pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+
+  pageArray = pages.toArray();
+
+  const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(alice.msaId.toString());
+  let bb = bundleBuilder.withSchemaId(schemaId);
+  pageArray.forEach((page) => {
+    bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
+  });
+
+  log.info('Re-importing graph from chain');
+  const importBundle = bb.build();
+  log.debug(JSON.stringify(importBundle));
+
+  await graph.importUserData([importBundle]);
+  const reExportedBundles = await graph.exportUpdates();
+  assert(reExportedBundles.length === 0, 'Export of re-imported graph should be empty as there should be no changes');
 }
 
 // Run the main program
