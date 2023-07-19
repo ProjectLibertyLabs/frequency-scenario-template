@@ -5,7 +5,8 @@
   "scripts": {
     "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
     "createMsa": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/create-msa-example.ts",
-    "graph-migration-setup": "set -a ; source .env ; ts-node --esm src/graph-migration-setup.ts"
+    "graph-migration-setup": "set -a ; source .env ; ts-node --esm src/graph-migration-setup.ts",
+    "test-capacity": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/test-capacity-example.ts"
   },
   "repository": {
     "type": "git",
