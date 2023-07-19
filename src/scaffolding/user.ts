@@ -2,7 +2,8 @@
 import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
-import { createKeys, generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519 } from './helpers';
+import { Bytes } from '@polkadot/types';
+import { createKeys, generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers';
 import { ExtrinsicHelper } from './extrinsicHelpers';
 
 export class User {
@@ -13,6 +14,8 @@ export class User {
   private _keypair: KeyringPair;
 
   private _allKeys: KeyringPair[] = [];
+
+  public handle: string;
 
   constructor(keypair?: KeyringPair, msaId?: MessageSourceId, providerId?: ProviderId) {
     this._keypair = keypair ?? createKeys();
@@ -28,6 +31,10 @@ export class User {
 
   public get keypair() {
     return this._keypair;
+  }
+
+  public get hasMSA(): boolean {
+    return this.msaId !== undefined;
   }
 
   public get isProvider(): boolean {
@@ -64,6 +71,17 @@ export class User {
 
     const { providerId } = result.data;
     this.providerId = providerId;
+  }
+
+  public async claimHandle(keys: KeyringPair, name: string) {
+    const handle_vec = new Bytes(ExtrinsicHelper.api.registry, name);
+    let currentBlock = await getBlockNumber();
+    const payload = {
+      baseHandle: handle_vec,
+      expiration: currentBlock + 10,
+   }
+    const claimHandlePayload = ExtrinsicHelper.api.registry.createType("CommonPrimitivesHandlesClaimHandlePayload", payload);
+    await ExtrinsicHelper.claimHandle(keys, claimHandlePayload).payWithCapacity();
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
