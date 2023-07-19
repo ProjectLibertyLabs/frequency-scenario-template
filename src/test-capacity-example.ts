@@ -30,7 +30,9 @@ async function main() {
 
   await stakeToProvider(keys, user.providerId, 320000000n);
 
-  await user.claimHandle("MyNameIsAlice");
+  // Use staked Capacity to claim a user handle
+  await user.claimHandleUsingCapacity("MyNameIsAlice");
+  console.log(`Claimed handle ${user.handle}`);
 }
 
 // Run the main program
