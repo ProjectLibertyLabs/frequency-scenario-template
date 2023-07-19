@@ -81,6 +81,21 @@ export class User {
       expiration: currentBlock + 10,
    }
     const claimHandlePayload = ExtrinsicHelper.api.registry.createType("CommonPrimitivesHandlesClaimHandlePayload", payload);
+    const [result] = await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).signAndSend();
+    if (result === undefined) {
+      throw new Error(`failed to claim handle ${this.handle}`);
+    }
+    this.handle = name;
+  }
+
+  public async claimHandleUsingCapacity(name: string) {
+    const handle_vec = new Bytes(ExtrinsicHelper.api.registry, name);
+    let currentBlock = await getBlockNumber();
+    const payload = {
+      baseHandle: handle_vec,
+      expiration: currentBlock + 10,
+   }
+    const claimHandlePayload = ExtrinsicHelper.api.registry.createType("CommonPrimitivesHandlesClaimHandlePayload", payload);
     const [result] = await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).payWithCapacity();
     if (result === undefined) {
       throw new Error(`failed to claim handle ${this.handle}`);
