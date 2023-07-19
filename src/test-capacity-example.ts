@@ -31,6 +31,8 @@ async function main() {
   await stakeToProvider(keys, user.providerId, 320000000n);
 
   await user.claimHandle("MyNameIsAlice");
+  console.log(`Claimed handle ${user.handle}`);
+
 }
 
 // Run the main program

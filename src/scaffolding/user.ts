@@ -81,7 +81,11 @@ export class User {
       expiration: currentBlock + 10,
    }
     const claimHandlePayload = ExtrinsicHelper.api.registry.createType("CommonPrimitivesHandlesClaimHandlePayload", payload);
-    await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).payWithCapacity();
+    const [result] = await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).payWithCapacity();
+    if (result === undefined) {
+      throw new Error(`failed to claim handle ${this.handle}`);
+    }
+    this.handle = name;
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
