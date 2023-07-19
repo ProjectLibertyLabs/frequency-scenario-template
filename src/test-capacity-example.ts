@@ -30,7 +30,7 @@ async function main() {
 
   await stakeToProvider(keys, user.providerId, 320000000n);
 
-  await user.claimHandle(keys, "MyNameIsAlice");
+  await user.claimHandle("MyNameIsAlice");
 }
 
 // Run the main program

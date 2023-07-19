@@ -73,7 +73,7 @@ export class User {
     this.providerId = providerId;
   }
 
-  public async claimHandle(keys: KeyringPair, name: string) {
+  public async claimHandle(name: string) {
     const handle_vec = new Bytes(ExtrinsicHelper.api.registry, name);
     let currentBlock = await getBlockNumber();
     const payload = {
@@ -81,7 +81,7 @@ export class User {
       expiration: currentBlock + 10,
    }
     const claimHandlePayload = ExtrinsicHelper.api.registry.createType("CommonPrimitivesHandlesClaimHandlePayload", payload);
-    await ExtrinsicHelper.claimHandle(keys, claimHandlePayload).payWithCapacity();
+    await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).payWithCapacity();
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
