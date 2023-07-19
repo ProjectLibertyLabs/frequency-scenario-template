@@ -32,7 +32,6 @@ async function main() {
 
   await user.claimHandle("MyNameIsAlice");
   console.log(`Claimed handle ${user.handle}`);
-
 }
 
 // Run the main program
