@@ -6,7 +6,6 @@
 import { userPrivateConnections, userPrivateFollows, publicKey, userPublicFollows } from '@dsnp/frequency-schemas/dsnp/index';
 import { ExtrinsicHelper } from './scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from './scaffolding/helpers';
-import { User } from './scaffolding/user';
 import { SchemaBuilder } from './scaffolding/schema-builder';
 import { UserBuilder } from './scaffolding/user-builder';
 
