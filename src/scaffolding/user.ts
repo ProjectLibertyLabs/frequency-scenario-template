@@ -3,7 +3,8 @@ import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augm
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import { firstValueFrom } from 'rxjs';
-import { generateAddKeyPayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
+import { Bytes } from '@polkadot/types';
+import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 
 export interface IUser {
@@ -24,6 +25,8 @@ export class User implements IUser {
 
   public fundingSource?: KeyringPair;
 
+  public handle: string;
+
   public paysWithCapacity: boolean = false;
 
   constructor({ allKeys, msaId, providerId, providerName, fundingSource }: IUser) {
@@ -32,6 +35,10 @@ export class User implements IUser {
     this.providerId = providerId;
     this.providerName = providerName;
     this.fundingSource = fundingSource;
+  }
+
+  public get hasMSA(): boolean {
+    return this.msaId !== undefined;
   }
 
   public get isProvider(): boolean {
@@ -89,6 +96,17 @@ export class User implements IUser {
         console.log(`Overriding requested Provider name ${name} with existing name ${this.providerName}`);
       }
     }
+  }
+
+  public async claimHandle(name: string) {
+    const handle_vec = new Bytes(ExtrinsicHelper.api.registry, name);
+    const currentBlock = await getBlockNumber();
+    const payload = {
+      baseHandle: handle_vec,
+      expiration: currentBlock + 10,
+    };
+    const claimHandlePayload = ExtrinsicHelper.api.registry.createType('CommonPrimitivesHandlesClaimHandlePayload', payload);
+    await ExtrinsicHelper.claimHandle(this.keypair, claimHandlePayload).payWithCapacity();
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {

@@ -104,13 +104,13 @@ export class UserBuilder {
 
     const fundingSource = this.values.fundingSource ?? getDefaultFundingSource().keys;
     const accountInfo = await ExtrinsicHelper.getAccountInfo(this.defaultKeypair.address);
-    const freeBalance = BigInt(accountInfo.data.free.toString()) - EXISTENTIAL_DEPOSIT;
+    const freeBalance = BigInt(accountInfo.data.free.toString());
     const fundingLevel = EXISTENTIAL_DEPOSIT + (this.values.initialFundingLevel ?? 0n);
-    const fundingAmount = fundingLevel - freeBalance;
+    const fundingAmount = fundingLevel > freeBalance ? fundingLevel - freeBalance : fundingLevel;
 
-    if (fundingAmount > 0) {
+    if (fundingAmount > 0n) {
       try {
-        log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount}`);
+        log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount > EXISTENTIAL_DEPOSIT ? fundingAmount : 'existential deposit'}`);
         await ExtrinsicHelper.transferFunds(fundingSource, this.defaultKeypair, fundingAmount).signAndSend();
       } catch (e) {
         throw new Error(`Unable to transfer initial token amount ${fundingAmount.toString()}:
@@ -118,15 +118,18 @@ export class UserBuilder {
       }
 
       // Once we've funded the account, remove the funding source so that the created User will self-fund
-      delete this.values.fundingSource;
+      if (fundingAmount > EXISTENTIAL_DEPOSIT) {
+        delete this.values.fundingSource;
+      }
     }
 
     let event: any;
     let msaId: MessageSourceId;
 
-    const id = await firstValueFrom(ExtrinsicHelper.api.query.msa.publicKeyToMsaId(this.defaultKeypair.publicKey));
-    if (id.isEmpty) {
+    const id = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId(this.defaultKeypair.publicKey);
+    if (id.isNone) {
       if (this.values.delegation === undefined) {
+        log.info(`Creating a new user for account ${this.defaultKeypair.address}`);
         const op = ExtrinsicHelper.createMsa(this.defaultKeypair);
         [event] = await this.executeUserOp(op, new Error(`Failed to create MSA for account ${this.defaultKeypair.address}`));
         if (!ExtrinsicHelper.api.events.msa.MsaCreated.is(event)) {
@@ -135,6 +138,7 @@ export class UserBuilder {
         msaId = event.data.msaId;
         log.info(`Created MSA ${msaId.toString()} for account ${this.defaultKeypair.address}`);
       } else {
+        log.info(`Creating a new delegated user for ${this.defaultKeypair.address} to provider ${this.values.delegation.delegate.providerId}`);
         const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, schemaIds: this.values.delegation.schemaIds });
         const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
         const op = ExtrinsicHelper.createSponsoredAccountWithDelegation(this.defaultKeypair, this.values.delegation.delegate.keypair, signature, payload);
@@ -170,6 +174,16 @@ export class UserBuilder {
 
     if ((this.values.allKeys?.length ?? 1) > 1) {
       this.values.allKeys?.slice(1)?.forEach(async (keys) => {
+        // Check if key is already registered to this or another MSA
+        const keyId = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId(keys.publicKey);
+        if (keyId.isSome) {
+          if (keyId.unwrap().toString() === msaId.toString()) {
+            log.info(`Key ${keys.publicKey} already present in MSA ${msaId.toString()}`);
+          } else {
+            log.error(`Skipping key ${keys.publicKey}; already belongs to MSA ${keyId.toString()}`);
+          }
+          return;
+        }
         const payload = await generateAddKeyPayload({
           msaId,
           newPublicKey: keys.publicKey,

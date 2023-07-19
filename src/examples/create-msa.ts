@@ -5,7 +5,7 @@
 
 import minimist from 'minimist';
 import { mnemonicGenerate } from '@polkadot/util-crypto';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, getDefaultFundingSource } from '../scaffolding/helpers';
 import { UserBuilder } from '../scaffolding/user-builder';
@@ -13,6 +13,7 @@ import { UserBuilder } from '../scaffolding/user-builder';
 async function main() {
   // Connect to chain & initialize API
   await initialize();
+  log.setLevel('trace');
 
   // Extract any CLI arguments
   const argv = minimist(process.argv);
@@ -22,8 +23,7 @@ async function main() {
   // Sample application logic: Get/create keypair and create MSA
   const builder = new UserBuilder();
   const provider = await builder.withKeyUri(`${uri}//0`).withFundingSource(getDefaultFundingSource().keys).asProvider('Test Provider').build();
-  // const user = await builder.withKeyUri(`${uri}//1`).withFundingSource(getDefaultFundingSource().keys).withInitialFundingLevel(20000000n).build();
-  const user = await builder.withKeyUri(`${uri}`).build();
+  const user = await builder.withKeyUri(`${uri}//1`).withFundingSource(getDefaultFundingSource().keys).withInitialFundingLevel(20000000000n).build();
   await user.stakeToProvider(provider.providerId!, 7000000n);
 }
 
