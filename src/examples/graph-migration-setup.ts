@@ -18,16 +18,20 @@ import {
   ImportBundleBuilder,
   Update,
   KeyData,
+  AddGraphKeyAction,
+  GraphKeyType,
+  GraphKeyPair,
 } from '@dsnp/graph-sdk';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, from } from 'rxjs';
 import log from 'loglevel';
-import { PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import { ItemizedStoragePageResponse, ItemizedStorageResponse, MessageSourceId, PageHash, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { User } from '#app/scaffolding/user';
-import { assert } from '@polkadot/util';
+import { assert, hexToU8a, stringToHex, stringToU8a, u8aToHex } from '@polkadot/util';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
 import { UserBuilder } from '../scaffolding/user-builder';
+import { Bytes, u16, u32, u64, u8 } from '@polkadot/types';
 
 function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
@@ -41,24 +45,28 @@ function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: 
   return config;
 }
 
-function createConnection(from: User, to: User, schemaId: number, toKeys?: { keys: KeyData[]; keysHash: number }): ConnectAction {
-  const connection = {
-    type: 'Connect',
-    ownerDsnpUserId: from.msaId.toString(),
-    connection: {
-      dsnpUserId: to.msaId.toString(),
-      schemaId,
-    },
-  } as ConnectAction;
+function createConnection(to: User, key: Uint8Array): AddGraphKeyAction {
+  // const connection = {
+  //   type: 'Connect',
+  //   ownerDsnpUserId: from.msaId.toString(),
+  //   connection: {
+  //     dsnpUserId: to.msaId.toString(),
+  //     schemaId,
+  //   },
+  // } as ConnectAction;
 
-  if (toKeys) {
-    connection.dsnpKeys = {
-      dsnpUserId: to.msaId.toString(),
-      keys: toKeys.keys,
-      keysHash: toKeys.keysHash,
-    } as DsnpKeys;
-  }
-
+  // if (toKeys) {
+  //   connection.dsnpKeys = {
+  //     dsnpUserId: to.msaId.toString(),
+  //     keys: toKeys.keys,
+  //     keysHash: toKeys.keysHash,
+  //   } as DsnpKeys;
+  // }
+  const connection: AddGraphKeyAction = {
+    type: 'AddGraphKey',
+    ownerDsnpUserId: to.msaId.toString(),
+    newPublicKey: key,
+  } as AddGraphKeyAction;
   return connection;
 }
 
@@ -102,6 +110,12 @@ async function main() {
   Provider (Ferdie) ID: ${provider.providerId?.toString()}
   `);
 
+  // lets generaye some keys for each user using sdk
+  let privateKeyGraph = await Graph.generateKeyPair(GraphKeyType.X25519);
+  console.log(`Private Key: ${u8aToHex(privateKeyGraph.secretKey)}`);
+  console.log(`Public Key: ${u8aToHex(privateKeyGraph.publicKey)}`);
+
+  log.info('Starting graph migration test');
   const schemaMap: { [key: number]: SchemaConfig } = {};
   schemaMap[publicFollowSchema.id.toNumber()] = {
     dsnpVersion: DsnpVersion.Version1_0,
@@ -130,12 +144,12 @@ async function main() {
 
   // Fetch Alice's public follow graph
   log.debug('Retrieving graph from chain');
-  const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
+  const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Private);
   let pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
 
   let pageArray: PaginatedStorageResponse[] = pages.toArray();
 
-  const actions: ConnectAction[] = [];
+  const actions: AddGraphKeyAction[] = [];
 
   // Remove the whole graph
   log.info('Removing all pages from graph');
@@ -143,8 +157,8 @@ async function main() {
   await Promise.all(removals);
 
   // Add connections
-  [bob, charlie, dave, eve].forEach((user) => {
-    actions.push(createConnection(alice, user, schemaId));
+  [alice, bob, charlie, dave, eve].forEach((user) => {
+    actions.push(createConnection(user, privateKeyGraph.publicKey));
   });
   log.info('Applying connections to graph');
   await graph.applyActions(actions);
@@ -152,7 +166,7 @@ async function main() {
   // Export graph to chain
   log.info('Getting export bundles...');
   const exportBundles: Update[] = await graph.exportUpdates();
-
+  console.log(`Export bundles: ${JSON.stringify(exportBundles)}`);
   const promises: Promise<any>[] = [];
   exportBundles.forEach((bundle) => {
     let op: any;
@@ -163,13 +177,34 @@ async function main() {
         promises.push(op.fundAndSend());
         break;
 
+      case 'AddKey':
+        let msaId: MessageSourceId = new u64(ExtrinsicHelper.api.registry, bundle.ownerDsnpUserId);
+        let target_hash: PageHash = new u32(ExtrinsicHelper.api.registry, bundle.prevHash);
+        const keyBytes = new Bytes(ExtrinsicHelper.api.registry, privateKeyGraph.publicKey);
+        let add_actions_1 = {
+          Add: keyBytes,
+        };
+        let itemized_add_result_1 = ExtrinsicHelper.applyItemActions(provider.keypair, publicKeySchema.id, msaId, [add_actions_1], target_hash);      
+        promises.push(itemized_add_result_1.fundAndSend());
       default:
         break;
     }
   });
   log.info('Writing graph updates to the chain');
   await Promise.all(promises);
-
+  return;
+  let results = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getItemizedStorage(alice.msaId, publicKeySchema.id));
+  //loop over results.items and get the payload bytes and check if it makes public key
+  let payload = results.items[0].payload;
+  let het_tou8 = hexToU8a(payload.toString());
+  console.log(`Itemized Storage: ${results.items[0].payload}`);
+  console.log(`Payload: ${het_tou8}`);
+  //console.log(`Payload_1: ${payload_1}`);
+  console.log(`Public Key: ${alice.keypair.publicKey}`);
+  // check if payload is equal to alice's public key
+  assert(alice.keypair.publicKey.toString() === het_tou8.toString(), 'Payloads do not match');
+  log.info('Public key is stored correctly');
+  return;
   // Read the graph back in from the chain to verify
   pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
 
@@ -188,6 +223,11 @@ async function main() {
   await graph.importUserData([importBundle]);
   const reExportedBundles = await graph.exportUpdates();
   assert(reExportedBundles.length === 0, 'Export of re-imported graph should be empty as there should be no changes');
+}
+
+export async function getCurrentItemizedHash(msa_id: MessageSourceId, schemaId: u16): Promise<PageHash> {
+  const result = await ExtrinsicHelper.getItemizedStorage(msa_id, schemaId);
+  return result.content_hash;
 }
 
 // Run the main program
