@@ -31,7 +31,8 @@ import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
 import { UserBuilder } from '../scaffolding/user-builder';
-import { Bytes, u16, u32, u64, u8 } from '@polkadot/types';
+import {Bytes, Compact, u16, u32, u64, u8, UInt, Vec} from '@polkadot/types';
+import {INumber} from "@polkadot/types-codec/types";
 
 function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
@@ -45,7 +46,7 @@ function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: 
   return config;
 }
 
-function createConnection(to: User, key: Uint8Array): AddGraphKeyAction {
+function createGraphKey(to: User, key: Uint8Array): AddGraphKeyAction {
   // const connection = {
   //   type: 'Connect',
   //   ownerDsnpUserId: from.msaId.toString(),
@@ -157,8 +158,8 @@ async function main() {
   await Promise.all(removals);
 
   // Add connections
-  [alice, bob, charlie, dave, eve].forEach((user) => {
-    actions.push(createConnection(user, privateKeyGraph.publicKey));
+  [alice/*, bob, charlie, dave, eve*/].forEach((user) => {
+    actions.push(createGraphKey(user, privateKeyGraph.publicKey));
   });
   log.info('Applying connections to graph');
   await graph.applyActions(actions);
@@ -178,13 +179,15 @@ async function main() {
         break;
 
       case 'AddKey':
-        let msaId: MessageSourceId = new u64(ExtrinsicHelper.api.registry, bundle.ownerDsnpUserId);
-        let target_hash: PageHash = new u32(ExtrinsicHelper.api.registry, bundle.prevHash);
-        const keyBytes = new Bytes(ExtrinsicHelper.api.registry, privateKeyGraph.publicKey);
+        let compactMsaId = ExtrinsicHelper.api.registry.createType('Compact<u64>', bundle.ownerDsnpUserId) as Compact<u64>;
+        let target_hash = ExtrinsicHelper.api.registry.createType('Compact<u32>', bundle.prevHash) as Compact<u32>;
+        let keySchemaId = ExtrinsicHelper.api.registry.createType('Compact<u16>', publicKeySchema.id) as Compact<u16>;
         let add_actions_1 = {
-          Add: keyBytes,
+          "Add": {
+            "data" : Array.from(bundle.payload)
+          }
         };
-        let itemized_add_result_1 = ExtrinsicHelper.applyItemActions(provider.keypair, publicKeySchema.id, msaId, [add_actions_1], target_hash);      
+        let itemized_add_result_1 = ExtrinsicHelper.applyItemActions(provider.keypair, keySchemaId, compactMsaId, [add_actions_1], target_hash);
         promises.push(itemized_add_result_1.fundAndSend());
       default:
         break;

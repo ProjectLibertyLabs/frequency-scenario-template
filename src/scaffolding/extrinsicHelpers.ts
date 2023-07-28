@@ -397,7 +397,7 @@ export class ExtrinsicHelper {
   }
 
   /** Stateful Storage Extrinsics */
-  public static applyItemActions(keys: KeyringPair, schemaId: any, msa_id: MessageSourceId, actions: any, target_hash: any): Extrinsic {
+  public static applyItemActions(keys: KeyringPair, schemaId: Compact<u16>, msa_id: Compact<u64>, actions: any, target_hash: Compact<u32>): Extrinsic {
     return new Extrinsic(
       () => ExtrinsicHelper.api.tx.statefulStorage.applyItemActions(msa_id, schemaId, target_hash, actions),
       keys,
