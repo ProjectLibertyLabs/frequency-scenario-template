@@ -18,6 +18,7 @@ import {
   ImportBundleBuilder,
   Update,
   KeyData,
+  GraphKeyType,
 } from '@dsnp/graph-sdk';
 import { firstValueFrom } from 'rxjs';
 import log from 'loglevel';
@@ -130,22 +131,29 @@ async function main() {
 
   // Fetch Alice's public follow graph
   log.debug('Retrieving graph from chain');
-  const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
-  let pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+  const publicFollowSchemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
+  let pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, publicFollowSchemaId));
 
   let pageArray: PaginatedStorageResponse[] = pages.toArray();
 
   const actions: ConnectAction[] = [];
+  const keyPairs = [bob, charlie, dave, eve].map((user) => {
+    const keyPair = Graph.generateKeyPair(GraphKeyType.X25519);
+  });
 
+  // sent public keys to chain for itemized storage
+  const publicKeySchemaId = graph.getGraphConfig(environment).graphPublicKeySchemaId;
+  
   // Remove the whole graph
   log.info('Removing all pages from graph');
   const removals = pageArray.map((page) => ExtrinsicHelper.removePage(alice.keypair, 1, alice.msaId, page.page_id, page.content_hash).fundAndSend());
   await Promise.all(removals);
 
-  // Add connections
+  // Add public connections
   [bob, charlie, dave, eve].forEach((user) => {
-    actions.push(createConnection(alice, user, schemaId));
+    actions.push(createConnection(alice, user,publicFollowSchemaId));
   });
+
   log.info('Applying connections to graph');
   await graph.applyActions(actions);
 
@@ -158,7 +166,7 @@ async function main() {
     let op: any;
     switch (bundle.type) {
       case 'PersistPage':
-        op = ExtrinsicHelper.upsertPage(alice.keypair, schemaId, alice.msaId, bundle.pageId, Array.from(Array.prototype.slice.call(bundle.payload)), 0); // hash is zero because graphs have been deleted
+        op = ExtrinsicHelper.upsertPage(alice.keypair, bundle.schemaId, alice.msaId, bundle.pageId, Array.from(Array.prototype.slice.call(bundle.payload)), 0); // hash is zero because graphs have been deleted
 
         promises.push(op.fundAndSend());
         break;
@@ -171,12 +179,12 @@ async function main() {
   await Promise.all(promises);
 
   // Read the graph back in from the chain to verify
-  pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+  pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, publicFollowSchemaId));
 
   pageArray = pages.toArray();
 
   const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(alice.msaId.toString());
-  let bb = bundleBuilder.withSchemaId(schemaId);
+  let bb = bundleBuilder.withSchemaId(publicFollowSchemaId);
   pageArray.forEach((page) => {
     bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
   });
