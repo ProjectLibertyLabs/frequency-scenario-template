@@ -14,19 +14,23 @@ async function main() {
   await initialize();
   log.setLevel('trace');
 
-  // Create MSAs and register a Provider
+  // Register Ferdie as the provider "FerdieNet"
   const builder = new UserBuilder();
   const provider = await builder.withKeypair(devAccounts[5].keys).asProvider('FerdieNet').build();
 
   const userBuilder = builder.withDelegation(provider, []);
 
   const users: User[] = [];
+
+  // Alice, Bob and Charlie have "FerdieNet" as their provider
   const alice = await userBuilder.withKeypair(devAccounts[0].keys).build();
   users.push(alice);
   const bob = await userBuilder.withKeypair(devAccounts[1].keys).build();
   users.push(bob);
   const charlie = await userBuilder.withKeypair(devAccounts[2].keys).build();
   users.push(charlie);
+
+  // Dave and Eve do not have a provider
   const dave = await builder.withKeypair(devAccounts[3].keys).build();
   users.push(dave);
   const eve = await builder.withKeypair(devAccounts[4].keys).build();
