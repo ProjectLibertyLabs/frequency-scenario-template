@@ -1,8 +1,7 @@
-import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
-import { firstValueFrom } from 'rxjs';
-import * as log from 'loglevel';
+import log from 'loglevel';
 import { IUser, User } from './user';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
@@ -17,8 +16,8 @@ interface IUserBuilder {
     delegate: User;
     schemaIds: (SchemaId | AnyNumber)[];
   };
-  fundingSource?: KeyringPair;
   initialFundingLevel?: bigint;
+  paymentMethod?: 'token' | 'capacity' | KeyringPair;
   handle?: string;
 }
 
@@ -72,16 +71,36 @@ export class UserBuilder {
 
   public withFundingSource(keys?: KeyringPair) {
     const fundingSource = keys ?? getDefaultFundingSource().keys;
-    return new UserBuilder({ ...this.values, fundingSource });
+    return new UserBuilder({ ...this.values, paymentMethod: fundingSource });
   }
 
   public withInitialFundingLevel(amount: bigint) {
     return new UserBuilder({ ...this.values, initialFundingLevel: amount });
   }
 
+  public withCapacityPayment() {
+    return new UserBuilder({ ...this.values, paymentMethod: 'capacity' });
+  }
+
+  public withTokenPayment() {
+    return new UserBuilder({ ...this.values, paymentMethod: 'token' });
+  }
+
   public async executeUserOp(op: Extrinsic, error?: any) {
     try {
-      const [target, eventMap] = await (this.values.fundingSource ? op.fundAndSend(this.values.fundingSource) : op.signAndSend());
+      const [target, eventMap] = await (async () => {
+        switch (this.values.paymentMethod) {
+          case 'token':
+            return op.signAndSend();
+
+          case 'capacity':
+            return op.payWithCapacity();
+
+          default:
+            return op.fundAndSend(this.values.paymentMethod);
+        }
+      })();
+
       if (!!op.targetEvent && !op.targetEvent?.is(target)) {
         throw error ?? new Error(`Extrinsic result does not match ${op.targetEvent?.meta.name}`);
       }
@@ -102,7 +121,17 @@ export class UserBuilder {
       throw new Error('Cannot create a User without a keypair or valid URI');
     }
 
-    const fundingSource = this.values.fundingSource ?? getDefaultFundingSource().keys;
+    const fundingSource = (() => {
+      switch (this.values.paymentMethod) {
+        case 'capacity':
+        case 'token':
+          return getDefaultFundingSource().keys;
+
+        default:
+          return this.values.paymentMethod ?? getDefaultFundingSource().keys;
+      }
+    })();
+
     const accountInfo = await ExtrinsicHelper.getAccountInfo(this.defaultKeypair.address);
     const freeBalance = BigInt(accountInfo.data.free.toString());
     const fundingLevel = EXISTENTIAL_DEPOSIT + (this.values.initialFundingLevel ?? 0n);
@@ -115,11 +144,6 @@ export class UserBuilder {
       } catch (e) {
         throw new Error(`Unable to transfer initial token amount ${fundingAmount.toString()}:
             ${JSON.stringify(e)}`);
-      }
-
-      // Once we've funded the account, remove the funding source so that the created User will self-fund
-      if (fundingAmount > EXISTENTIAL_DEPOSIT) {
-        delete this.values.fundingSource;
       }
     }
 
@@ -170,6 +194,9 @@ export class UserBuilder {
     }
 
     // if (this.values.handle) {
+    //   const payload = new PayloadBuilder().asClaimHandlePayload().withBaseHandle(this.values.handle).withExpirationOffset(10).build();
+    //   const op = ExtrinsicHelper.claimHandle(this.defaultKeypair, payload);
+    //   await this.executeUserOp(op, new Error(`Failed to claim handle ${this.values.handle}`));
     // }
 
     if ((this.values.allKeys?.length ?? 1) > 1) {
@@ -203,14 +230,14 @@ export class UserBuilder {
       allKeys: this.values.allKeys!,
     };
 
-    const providerRegistryEntryOption = await firstValueFrom(ExtrinsicHelper.api.query.msa.providerToRegistryEntry(msaId));
+    const providerRegistryEntryOption = await ExtrinsicHelper.apiPromise.query.msa.providerToRegistryEntry(msaId);
     if (providerRegistryEntryOption.isNone) {
       if (this.values.providerName) {
         const op = ExtrinsicHelper.createProvider(this.defaultKeypair, this.values.providerName);
         const [result] = await this.executeUserOp(op);
-        // if (!ExtrinsicHelper.api.events.msa.ProviderCreated.is(result)) {
-        //   throw new Error(`failed to register ${this.values.providerName} as provider`);
-        // }
+        if (!ExtrinsicHelper.api.events.msa.ProviderCreated.is(result)) {
+          throw new Error(`failed to register ${this.values.providerName} as provider`);
+        }
 
         userParams.providerId = result.data.providerId;
         log.info(`Registered MSA ${msaId.toString()} as provider '${this.values.providerName}`);
