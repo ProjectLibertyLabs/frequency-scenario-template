@@ -25,7 +25,7 @@ import {
 import log from 'loglevel';
 import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { User } from '#app/scaffolding/user';
-import { assert, hexToU8a, logger } from '@polkadot/util';
+import { hexToU8a } from '@polkadot/util';
 import { Option } from '@polkadot/types';
 import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
