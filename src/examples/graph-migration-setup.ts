@@ -18,12 +18,16 @@ import {
   ImportBundleBuilder,
   Update,
   KeyData,
+  AddGraphKeyAction,
+  Action,
+  AddKeyUpdate,
 } from '@dsnp/graph-sdk';
-import { firstValueFrom } from 'rxjs';
 import log from 'loglevel';
-import { PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { User } from '#app/scaffolding/user';
-import { assert } from '@polkadot/util';
+import { assert, hexToU8a, logger } from '@polkadot/util';
+import { Option } from '@polkadot/types';
+import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
@@ -62,6 +66,8 @@ function createConnection(from: User, to: User, schemaId: number, toKeys?: { key
   return connection;
 }
 
+const AMOUNT_TO_STAKE = 200000000000n;
+
 async function main() {
   // Connect to chain & initialize API
   await initialize();
@@ -70,7 +76,6 @@ async function main() {
   // Create graph schemata
   const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
   const publicFollowSchema = await schemaBuilder.withModel({ ...userPublicFollows, doc: 'Public follow schema' }).build(devAccounts[0].keys);
-  const publicFriendSchema = await schemaBuilder.withModel({ ...userPublicFollows, doc: 'Public friend schema' }).build(devAccounts[0].keys);
   const privateFollowSchema = await schemaBuilder.withModel(userPrivateFollows).build(devAccounts[0].keys);
   const privateFriendSchema = await schemaBuilder.withModel(userPrivateConnections).build(devAccounts[0].keys);
   const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).withSetting('AppendOnly').build(devAccounts[0].keys);
@@ -78,39 +83,44 @@ async function main() {
   // Create MSAs and register a Provider
   const builder = new UserBuilder();
   const provider = await builder.withKeypair(devAccounts[5].keys).asProvider('FerdieNet').build();
+  const capacityResult: Option<PalletCapacityCapacityDetails> = (await ExtrinsicHelper.apiPromise.query.capacity.capacityLedger(provider.providerId)) as any;
+  const capacity = capacityResult.unwrapOr({ totalCapacityIssued: 0n });
+  const stakeAmount = AMOUNT_TO_STAKE - (typeof capacity.totalCapacityIssued === 'bigint' ? capacity.totalCapacityIssued : capacity.totalCapacityIssued.toBigInt());
+  await ExtrinsicHelper.stake(provider.keypair, provider.providerId, stakeAmount).signAndSend();
 
   const userBuilder = builder.withDelegation(provider, [publicFollowSchema.id, privateFollowSchema.id, privateFriendSchema.id, publicKeySchema.id]);
 
+  const users: User[] = [];
   const alice = await userBuilder.withKeypair(devAccounts[0].keys).build();
+  users.push(alice);
   const bob = await userBuilder.withKeypair(devAccounts[1].keys).build();
+  users.push(bob);
   const charlie = await userBuilder.withKeypair(devAccounts[2].keys).build();
+  users.push(charlie);
   const dave = await userBuilder.withKeypair(devAccounts[3].keys).build();
+  users.push(dave);
   const eve = await userBuilder.withKeypair(devAccounts[4].keys).build();
+  users.push(eve);
 
   log.info(`
   Follow(Public) Schema ID: ${publicFollowSchema.id.toNumber()}
-  Friendship(Public) Schema ID: ${publicFriendSchema.id.toNumber()}
   Follow(Private) Schema ID: ${privateFollowSchema.id.toNumber()}
   Friendship(Private) Schema ID: ${privateFriendSchema.id.toNumber()}
   DSNP Key Schema ID: ${publicKeySchema.id.toNumber()}
+
+  Provider (Ferdie) ID: ${provider.providerId?.toString()}
 
   User (Alice) MSA ID: ${alice.msaId.toString()}
   User (Bob) MSA ID: ${bob.msaId.toString()}
   User (Charlie) MSA ID: ${charlie.msaId.toString()}
   User (Dave) MSA ID: ${dave.msaId.toString()}
   User (Eve) MSA ID: ${eve.msaId.toString()}
-  Provider (Ferdie) ID: ${provider.providerId?.toString()}
   `);
 
   const schemaMap: { [key: number]: SchemaConfig } = {};
   schemaMap[publicFollowSchema.id.toNumber()] = {
     dsnpVersion: DsnpVersion.Version1_0,
     connectionType: ConnectionType.Follow,
-    privacyType: PrivacyType.Public,
-  };
-  schemaMap[publicFriendSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Friendship,
     privacyType: PrivacyType.Public,
   };
   schemaMap[privateFollowSchema.id.toNumber()] = {
@@ -124,76 +134,131 @@ async function main() {
     privacyType: PrivacyType.Private,
   };
   const a = ExtrinsicHelper.api.consts.frequencyTxPayment.maximumCapacityBatchLength;
-  console.log(`Max capacity batch: ${a}`);
+  log.debug(`Max capacity batch: ${a}`);
   const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap, publicKeySchema.id) };
   const graph = new Graph(environment);
 
-  // Fetch Alice's public follow graph
-  log.debug('Retrieving graph from chain');
-  const schemaId = await graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
-  let pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+  const schemaId = graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
 
-  let pageArray: PaginatedStorageResponse[] = pages.toArray();
+  // Clear all users' graphs
+  // eslint-disable-next-line no-restricted-syntax
+  for (const user of users) {
+    log.info(`Clearing existing graph for MSA ${user.msaId.toString()}`);
+    // Fetch user's public follow graph
+    // eslint-disable-next-line no-await-in-loop
+    const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
 
-  const actions: ConnectAction[] = [];
+    const pageArray: PaginatedStorageResponse[] = pages.toArray();
 
-  // Remove the whole graph
-  log.info('Removing all pages from graph');
-  const removals = pageArray.map((page) => ExtrinsicHelper.removePage(alice.keypair, 1, alice.msaId, page.page_id, page.content_hash).fundAndSend());
-  await Promise.all(removals);
+    // Remove the whole graph
+    const removals = pageArray.map((page) => ExtrinsicHelper.removePage(user.keypair, 1, user.msaId, page.page_id, page.content_hash).fundAndSend());
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(removals);
+  }
 
-  // Add connections
-  [bob, charlie, dave, eve].forEach((user) => {
-    actions.push(createConnection(alice, user, schemaId));
-  });
-  log.info('Applying connections to graph');
-  await graph.applyActions(actions);
-
-  // Export graph to chain
-  log.info('Getting export bundles...');
-  const exportBundles: Update[] = await graph.exportUpdates();
-
-  const promises: Promise<any>[] = [];
-  exportBundles.forEach((bundle) => {
-    let op: any;
-    switch (bundle.type) {
-      case 'PersistPage':
-        op = ExtrinsicHelper.upsertPage(alice.keypair, schemaId, alice.msaId, bundle.pageId, Array.from(Array.prototype.slice.call(bundle.payload)), 0); // hash is zero because graphs have been deleted
-
-        promises.push(op.fundAndSend());
-        break;
-
-      default:
-        break;
+  // Install public key(s)
+  // eslint-disable-next-line no-restricted-syntax
+  for (const user of users) {
+    // eslint-disable-next-line no-await-in-loop
+    const itemizedPage: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeySchema.id);
+    if (itemizedPage.items.length > 0) {
+      log.info(`Found an existing public graph key for user ${user.msaId.toString()}; skipping key install`);
+      // eslint-disable-next-line no-continue
+      continue;
     }
-  });
-  log.info('Writing graph updates to the chain');
-  await Promise.all(promises);
 
-  // Read the graph back in from the chain to verify
-  pages = await firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(alice.msaId, schemaId));
+    log.info(`Installing public Graph key for user ${user.msaId.toString()}`);
+    const actions = [
+      {
+        type: 'AddGraphKey',
+        ownerDsnpUserId: user.msaId.toString(),
+        newPublicKey: hexToU8a('0xe3b18e1aa5c84175ec0c516838fb89dd9c947dd348fa38fe2082764bbc82a86f'),
+      } as AddGraphKeyAction,
+    ];
+    graph.applyActions(actions);
+    const keyExport = graph.exportUserGraphUpdates(user.msaId.toString());
 
-  pageArray = pages.toArray();
+    const promises = keyExport
+      .filter((bundle) => bundle.type === 'AddKey')
+      .map((bundle) => {
+        const keyActions = [
+          {
+            Add: {
+              data: Array.from((bundle as AddKeyUpdate).payload),
+            },
+          },
+        ];
+        return ExtrinsicHelper.applyItemActions(user.keypair, publicKeySchema.id, user.msaId, keyActions, 0).fundAndSend();
+      });
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(promises);
+  }
 
-  const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(alice.msaId.toString());
-  let bb = bundleBuilder.withSchemaId(schemaId);
-  pageArray.forEach((page) => {
-    bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
-  });
+  // Connect everyone to everyone else
+  // eslint-disable-next-line no-restricted-syntax
+  for (const user of users) {
+    log.info(`*****
+Building new graph for user ${user.msaId.toString()}`);
+    const actions: Action[] = [];
+    users
+      .filter((otherUser) => otherUser.msaId !== user.msaId)
+      .forEach((otherUser) => {
+        actions.push(createConnection(user, otherUser, schemaId));
+      });
+    log.info('Applying connections to graph');
+    graph.applyActions(actions);
 
-  log.info('Re-importing graph from chain');
-  const importBundle = bb.build();
-  log.debug(JSON.stringify(importBundle));
+    // Export graph to chain
+    log.info('Getting export bundles...');
+    const exportBundles: Update[] = graph.exportUserGraphUpdates(user.msaId.toString());
 
-  await graph.importUserData([importBundle]);
-  const reExportedBundles = await graph.exportUpdates();
-  assert(reExportedBundles.length === 0, 'Export of re-imported graph should be empty as there should be no changes');
+    const promises: Promise<any>[] = [];
+    exportBundles.forEach((bundle) => {
+      let op: any;
+      switch (bundle.type) {
+        case 'PersistPage':
+          op = ExtrinsicHelper.upsertPage(user.keypair, schemaId, user.msaId, bundle.pageId, Array.from(Array.prototype.slice.call(bundle.payload)), 0); // hash is zero because graphs have been deleted
+
+          promises.push(op.fundAndSend());
+          break;
+
+        default:
+          break;
+      }
+    });
+    log.info('Writing graph updates to the chain');
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(promises);
+
+    // Read the graph back in from the chain to verify
+    // eslint-disable-next-line no-await-in-loop
+    const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
+
+    const pageArray = pages.toArray();
+
+    const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(user.msaId.toString());
+    let bb = bundleBuilder.withSchemaId(schemaId);
+    pageArray.forEach((page) => {
+      bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
+    });
+
+    log.info('Re-importing graph from chain');
+    const importBundle = bb.build();
+    // log.debug(JSON.stringify(importBundle));
+
+    graph.importUserData([importBundle]);
+    const reExportedBundles = graph.exportUserGraphUpdates(user.msaId.toString());
+    if (reExportedBundles.length > 0) {
+      log.error(`State problem: re-export of imported graph for user ${user.msaId.toString()} should be empty, but it is not:
+      ${JSON.stringify(reExportedBundles)}`);
+    }
+  }
 }
 
 // Run the main program
 main()
   .then(() => {})
-  .catch((e) => console.log(e))
+  .catch((e) => log.log(e))
   .finally(async () => {
     await ExtrinsicHelper.disconnect();
   });
