@@ -44,6 +44,11 @@ const main = async () => {
     throw new Error(`Unable to resolve ${delegator} to an MSA Id`);
   }
 
+  console.log("Attempting to setup a delegation with:", {
+    providerMsaId,
+    delegatorMsaId,
+  });
+
   const key = api.query.msa.delegatorAndProviderToDelegation.creator(delegatorMsaId, providerMsaId);
 
   const hexKey = u8aToHex(compactStripLength(key)[1]);
