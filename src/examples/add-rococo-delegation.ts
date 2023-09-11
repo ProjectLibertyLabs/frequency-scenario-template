@@ -3,12 +3,12 @@
  * by the Amplica Access custodial wallet.
  *
  * Inputs required:
- * --delegatorMsaId: MSA ID being delegated
  * --providerMsaId: Provider MSA ID being delegated to
  * --sudoUri: Testnet sudo seed phrase
+ * --delegator: MSA ID or Handle being delegated
  *
  * To run:
- * npm run run-example --example=add-rococo-delegation -- --delegatorMsaId=? --providerMsaId=? --sudoUri='seed phrase'
+ * npm run run-example --example=add-rococo-delegation -- --delegator=? --providerMsaId=? --sudoUri='seed phrase'
  */
 
 import minimist from 'minimist';
@@ -23,14 +23,26 @@ const main = async () => {
   await ExtrinsicHelper.initialize(WEBSOCKET_URL);
   const api = ExtrinsicHelper.apiPromise;
 
-  const { providerMsaId, delegatorMsaId, sudoUri } = argv;
-  if (typeof providerMsaId === 'undefined' || typeof delegatorMsaId === 'undefined' || typeof sudoUri === 'undefined') {
-    console.log('Missing required command-line argument(s)');
+  const { providerMsaId, delegator, sudoUri } = argv;
+  if (typeof providerMsaId === 'undefined' || typeof delegator === 'undefined' || typeof sudoUri === 'undefined') {
+    console.log('Missing required command-line argument(s): "delegator", "providerMsaId", or "sudoUri"');
     process.exit(1);
   }
 
   const keyring = new Keyring();
   const sudo = keyring.addFromUri(sudoUri, {}, 'sr25519');
+
+  const delegatorMsaId = await (async () => {
+    if (parseInt(delegator).toString() === delegator) {
+      return delegator;
+    }
+    const handleResp = (await api.rpc.handles.getMsaForHandle(delegator.replace("@", ""))).toJSON();
+    return parseInt(handleResp as string);
+  })();
+
+  if (isNaN(delegatorMsaId)) {
+    throw new Error(`Unable to resolve ${delegator} to an MSA Id`);
+  }
 
   const key = api.query.msa.delegatorAndProviderToDelegation.creator(delegatorMsaId, providerMsaId);
 
