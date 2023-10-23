@@ -359,9 +359,10 @@ export class ExtrinsicHelper {
     return new Extrinsic(() => ExtrinsicHelper.api.tx.msa.createProvider(providerName), keys, ExtrinsicHelper.api.events.msa.ProviderCreated);
   }
 
-  public static createSponsoredAccountWithDelegation(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: AddProviderPayload): Extrinsic {
+  public static createSponsoredAccountWithDelegation(delegatorKeys: KeyringPair | Uint8Array, providerKeys: KeyringPair, signature: Sr25519Signature, payload: AddProviderPayload): Extrinsic {
+    const delegatorPublicKey = 'publicKey' in delegatorKeys ? delegatorKeys.publicKey : delegatorKeys
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.msa.createSponsoredAccountWithDelegation(delegatorKeys.publicKey, signature, payload),
+      () => ExtrinsicHelper.api.tx.msa.createSponsoredAccountWithDelegation(delegatorPublicKey, signature, payload),
       providerKeys,
       ExtrinsicHelper.api.events.msa.MsaCreated,
     );
@@ -464,6 +465,15 @@ export class ExtrinsicHelper {
     return new Extrinsic(
       () => ExtrinsicHelper.api.tx.handles.claimHandle(delegatorKeys.publicKey, proof, payload),
       delegatorKeys,
+      ExtrinsicHelper.api.events.handles.HandleClaimed,
+    );
+  }
+
+  public static claimHandleWithProvider(delegatorKeys: KeyringPair | Uint8Array, providerKeys: KeyringPair, proof: Sr25519Signature, payload: any): Extrinsic {
+    const delegatorPublicKey = 'publicKey' in delegatorKeys ? delegatorKeys.publicKey : delegatorKeys
+    return new Extrinsic(
+      () => ExtrinsicHelper.api.tx.handles.claimHandle(delegatorPublicKey, proof, payload),
+      providerKeys,
       ExtrinsicHelper.api.events.handles.HandleClaimed,
     );
   }
