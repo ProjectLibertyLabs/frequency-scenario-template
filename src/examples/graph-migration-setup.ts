@@ -194,6 +194,11 @@ async function main() {
     await Promise.all(promises);
   }
 
+  /**
+   *  Leave this here for reference, but really for testing reconnection-service
+   *  we want all graphs to be initially empty on-chain, as that's how it'll be
+   *  (at least while we still have a single provider, MeWe)
+
   // Connect everyone to everyone else
   // eslint-disable-next-line no-restricted-syntax
   for (const user of users) {
@@ -268,6 +273,7 @@ Building new graph for user ${user.msaId.toString()}`);
       ${JSON.stringify(reExportedBundles)}`);
     }
   }
+  */
 }
 
 // Run the main program
