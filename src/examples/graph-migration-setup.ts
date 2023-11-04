@@ -66,7 +66,7 @@ function createConnection(from: User, to: User, schemaId: number, toKeys?: { key
   return connection;
 }
 
-const AMOUNT_TO_STAKE = 200000000000n;
+const AMOUNT_TO_STAKE = 20000000000000n;
 
 async function main() {
   // Connect to chain & initialize API
@@ -194,6 +194,11 @@ async function main() {
     await Promise.all(promises);
   }
 
+  /**
+   *  Leave this here for reference, but really for testing reconnection-service
+   *  we want all graphs to be initially empty on-chain, as that's how it'll be
+   *  (at least while we still have a single provider, MeWe)
+
   // Connect everyone to everyone else
   // eslint-disable-next-line no-restricted-syntax
   for (const user of users) {
@@ -230,14 +235,29 @@ Building new graph for user ${user.msaId.toString()}`);
     // eslint-disable-next-line no-await-in-loop
     await Promise.all(promises);
 
+    const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(user.msaId.toString());
+    let bb = bundleBuilder.withSchemaId(schemaId);
+
+    // Import the user's keys
+    // eslint-disable-next-line no-await-in-loop
+    const publicKeys: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeySchema.id);
+    const keyData: KeyData[] = publicKeys.items.toArray().map((pk) => ({
+      index: pk.index.toNumber(),
+      content: hexToU8a(pk.payload.toHex()),
+    }));
+    const dsnpKeys: DsnpKeys = {
+      dsnpUserId: user.msaId.toString(),
+      keysHash: publicKeys.content_hash.toNumber(),
+      keys: keyData,
+    };
+    bb = bb.withDsnpKeys(dsnpKeys);
+
     // Read the graph back in from the chain to verify
     // eslint-disable-next-line no-await-in-loop
     const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
 
     const pageArray = pages.toArray();
 
-    const bundleBuilder = new ImportBundleBuilder().withDsnpUserId(user.msaId.toString());
-    let bb = bundleBuilder.withSchemaId(schemaId);
     pageArray.forEach((page) => {
       bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
     });
@@ -253,6 +273,7 @@ Building new graph for user ${user.msaId.toString()}`);
       ${JSON.stringify(reExportedBundles)}`);
     }
   }
+  */
 }
 
 // Run the main program
