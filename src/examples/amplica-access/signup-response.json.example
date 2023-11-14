@@ -1,0 +1,69 @@
+{
+  "externalUserId": "+18005553333",
+  "userIdentifiers": [
+    {
+      "value": "+18005553333",
+      "type": "PHONE_NUMBER",
+      "priority": 1
+    }
+  ],
+  "token": "400511",
+  "publicKey": {
+    "encodedValue": "5HVqZojEtM9Q4G2mw8FrEELvyM3ZPp2awDTFPDk1oMphVwXZ",
+    "encoding": "base58",
+    "format": "ss58",
+    "type": "Sr25519"
+  },
+  "addProviderPayloadSignature": {
+    "algo": "SR25519",
+    "encoding": "base16",
+    "encodedValue": "0x6a66a615f1240cb59da06a1b3cb840fd77510c561672bbd7ea4979ed029c9930ad04004c65993d7059a2cd7b73265ac855b9c49ddb0efeed796d583fc04f5a8b"
+  },
+  "addProviderPayload": {
+    "authorizedMsaId": 1,
+    "schemaIds": [
+      5,
+      7,
+      8,
+      9,
+      10
+    ],
+    "expiration": 11
+  },
+  "handle": {
+    "signature": {
+      "algo": "SR25519",
+      "encoding": "base16",
+      "encodedValue": "0xa40e821b2c39aef2739e015139fd7f885410cb33490ce37a0af600b1ac45ee0e1102e8dc558cab355590ac9ef4efba978114fcd100c5beb7696925b58be12880"
+    },
+    "payload": {
+      "baseHandle": "sampleHandle",
+      "expiration": 11
+    }
+  },
+  "graphKey": {
+    "signature": {
+      "algo": "SR25519",
+      "encoding": "base16",
+      "encodedValue": "0xa2d057dbab066ca8221ffbe9ac7e45d354a0b669fb93c0219d71f06f1cf2f73e363d60ebe4f8670b898e92f5e428acb3020c50fdf06200091c210dc0fedde780"
+    },
+    "payload": {
+      "schemaId": 7,
+      "targetHash": 0,
+      "expiration": 11,
+      "publicKey": {
+        "encodedValue": "0x40337ccf49f92a969265b24fa7ee5fd4ccacabc749e899d8a1f3e74be90d271d71",
+        "encoding": "base16",
+        "format": "dsnpPublicKey",
+        "type": "X25519"
+      },
+      "keyPair": {
+        "encodedPublicKeyValue": "0x337ccf49f92a969265b24fa7ee5fd4ccacabc749e899d8a1f3e74be90d271d71",
+        "encodedPrivateKeyValue": "0xb436f5f044b536c05d4be90ff58b799827c4cac6d8e45e4959580425ff092bbd",
+        "encoding": "base16",
+        "format": "bare",
+        "type": "X25519"
+      }
+    }
+  }
+}
