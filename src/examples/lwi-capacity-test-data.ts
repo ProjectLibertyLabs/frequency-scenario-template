@@ -11,100 +11,89 @@ import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { createKeys, devAccounts, getBlockNumber, initialize, stakeToProvider } from '../scaffolding/helpers';
 
 const firstNames = [
-  'Emma',
-  'Liam',
-  'Olivia',
-  'Noah',
-  'Ava',
-  'Isabella',
-  'Sophia',
-  'Jackson',
-  'Lucas',
-  'Aiden',
-  'Mia',
-  'Oliver',
-  'Amelia',
-  'Evelyn',
-  'Elijah',
-  'Harper',
-  'Benjamin',
-  'Ethan',
+  'Aaliyah',
   'Abigail',
-  'Emily',
   'Alexander',
-  'James',
-  'Scarlett',
-  'Sebastian',
+  'Amelia',
+  'Andrew',
+  'Annabelle',
   'Aria',
+  'Ariana',
+  'Aubrey',
+  'Ava',
   'Avery',
+  'Benjamin',
+  'Bella',
+  'Caleb',
+  'Camila',
+  'Carter',
+  'Chloe',
+  'Christopher',
+  'Claire',
+  'Daniel',
+  'David',
+  'Elena',
+  'Eli',
+  'Elijah',
   'Ella',
   'Ellie',
-  'Grace',
-  'Julian',
-  'Matthew',
-  'Samuel',
-  'David',
-  'Joseph',
-  'Victoria',
-  'Gabriel',
-  'Madison',
-  'Zoe',
-  'Chloe',
-  'Penelope',
-  'Lily',
-  'Hannah',
-  'Layla',
-  'Nathan',
-  'Lucy',
-  'Isaac',
+  'Emily',
+  'Emma',
+  'Ethan',
   'Eva',
-  'Christopher',
-  'Andrew',
-  'Aaliyah',
-  'Sofia',
-  'Daniel',
-  'Wyatt',
-  'Natalie',
-  'Bella',
-  'Zachary',
-  'Leo',
-  'Aubrey',
-  'Camila',
-  'Peyton',
-  'Eli',
-  'Riley',
-  'Hazel',
-  'Sophie',
-  'Annabelle',
-  'Claire',
-  'Jordan',
-  'Julia',
-  'Landon',
-  'Mason',
-  'Sophie',
-  'Annabelle',
-  'Claire',
-  'Jordan',
-  'Julia',
-  'Landon',
-  'Caleb',
-  'Aria',
-  'Carter',
-  'Ariana',
-  'Elena',
-  'Xavier',
-  'Naomi',
-  'Jaxon',
-  'Zara',
-  'Nora',
+  'Evelyn',
   'Ezra',
-  'Ruby',
+  'Gabriel',
+  'Grace',
+  'Hannah',
+  'Hazel',
+  'Isaac',
+  'Isabella',
   'Isaiah',
-  'Alice',
-  'Eva',
+  'Jackson',
+  'Jaxon',
+  'John',
+  'Jordan',
+  'Joseph',
+  'Julia',
+  'Julian',
   'Kai',
-  'Quinn',
+  'Landon',
+  'Layla',
+  'Leo',
+  'Liam',
+  'Lily',
+  'Lucas',
+  'Lucy',
+  'Madison',
+  'Mason',
+  'Matthew',
+  'Mia',
   'Mila',
+  'Natalie',
+  'Nathan',
+  'Naomi',
+  'Nora',
+  'Noah',
+  'Oliver',
+  'Olivia',
+  'Peyton',
+  'Penelope',
+  'Quinn',
+  'Riley',
+  'Ruby',
+  'Samuel',
+  'Scarlett',
+  'Sebastian',
+  'Sofia',
+  'Sophia',
+  'Sophie',
+  'Victoria',
+  'Wyatt',
+  'Xavier',
+  'Zachary',
+  'Zara',
+  'Zoe',
 ];
 
 function randomName(): string {
@@ -112,11 +101,12 @@ function randomName(): string {
   return name;
 }
 
-async function incrementBlock() {
+async function incrementBlock(num: number) {
   const blockNumber = await getBlockNumber();
-  console.log(`Incrementing block number: ${blockNumber} to ${blockNumber + 1}`);
-  await ExtrinsicHelper.run_to_block(blockNumber + 1);
+  console.log(`\tIncrementing block number: ${blockNumber} to ${blockNumber + num}`);
+  await ExtrinsicHelper.run_to_block(blockNumber + num);
 }
+
 
 async function createProvider(providerName: string): Promise<User> {
   const builder = new UserBuilder();
@@ -128,15 +118,14 @@ async function createProvider(providerName: string): Promise<User> {
 }
 
 async function createUserForProvider(provider: User): Promise<void> {
-  console.log(`Creating user for provider ${provider.providerName}`);
   const userName = randomName();
   const keypair = createKeys();
-  const builder = new UserBuilder();
-  const userBuilder = builder.withDelegation(provider, []).withProviderPayment().withHandle(userName);
+  const builder = new UserBuilder().withProviderPayment();
+  const userBuilder = builder.withDelegation(provider, []).withHandle(userName);
 
   const user = await userBuilder.withKeypair(keypair).build();
-  console.log(`Created user ${userName} with id ${user.msaId} and handle ${user.handle}`);
-  await incrementBlock();
+  console.log(`\tCreated user ${userName} with id ${user.msaId} and handle ${user.handle}`);
+  await incrementBlock(1);
 }
 
 async function createProviders(num: number): Promise<void> {
@@ -146,20 +135,20 @@ async function createProviders(num: number): Promise<void> {
 
   for (let i = 0; i < num; i++) {
     const provider = await createProvider(randomName());
+    console.log(`\nPROVIDER ${provider.providerName}`);
 
     // Stake some tokens to the provider
-    console.log(`Staking tokens to provider ${provider.providerName}`);
     const tokensToStake: bigint = minStakingAmount.toBigInt() + BigInt(Math.floor(Math.random() * 300000000000));
     await stakeToProvider(aliceKeyPair, provider.providerId!, tokensToStake);
-    console.log(`Created provider ${provider.providerName} with id ${provider.providerId} and staked ${tokensToStake} tokens`);
-    await incrementBlock();
+    console.log(`\tCreated provider ${provider.providerName} with id ${provider.providerId} and staked ${tokensToStake} tokens.`);
+    await incrementBlock(1);
 
     // Create some users for the provider
-    const numUsers = Math.floor(Math.random() * 5);
+    const numUsers = Math.floor(Math.random() * 4);
     for (let j = 0; j < numUsers; j++) {
       await createUserForProvider(provider);
     }
-    await incrementBlock();
+    await incrementBlock(100);
   }
 }
 
@@ -168,7 +157,7 @@ async function main() {
   await initialize();
 
   // Create 10 providers and stake some tokens to them
-  await createProviders(10);
+  await createProviders(8);
 }
 
 // Run the main program
