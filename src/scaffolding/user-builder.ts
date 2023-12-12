@@ -2,7 +2,6 @@ import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfac
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import log from 'loglevel';
-import { sign } from 'crypto';
 import { IUser, User } from './user';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
@@ -211,7 +210,7 @@ export class UserBuilder {
         this.values.paymentMethod === 'provider'
           ? ExtrinsicHelper.claimHandleWithProvider(this.defaultKeypair, this.values.delegation?.delegate.keypair!, signature, payload)
           : ExtrinsicHelper.claimHandle(this.defaultKeypair, payload);
-      const [result, eventMap] = await (this.values.paymentMethod === 'provider' ? op.payWithCapacity() : op.fundAndSend());
+      const [result] = await (this.values.paymentMethod === 'provider' ? op.payWithCapacity() : op.fundAndSend());
       if (!ExtrinsicHelper.api.events.handles.HandleClaimed.is(result)) {
         throw new Error(`Handle not claimed`);
       }
