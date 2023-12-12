@@ -281,6 +281,12 @@ export async function stakeToProvider(keys: KeyringPair, providerId: u64, tokens
   await stakeOp.fundAndSend();
 }
 
+// Unstakes the given amount of tokens from the given keys to the given provider
+export async function unstakeFromProvider(keys: KeyringPair, providerId: u64, tokensToUnstake: bigint): Promise<void> {
+  const stakeOp = ExtrinsicHelper.unstake(keys, providerId, tokensToUnstake);
+  await stakeOp.fundAndSend();
+}
+
 export async function getNextEpochBlock() {
   const epochInfo = await firstValueFrom(ExtrinsicHelper.api.query.capacity.currentEpochInfo());
   const actualEpochLength = await firstValueFrom(ExtrinsicHelper.api.query.capacity.epochLength());
