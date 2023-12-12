@@ -1,3 +1,5 @@
+/* eslint-disable no-plusplus */
+/* eslint-disable no-await-in-loop */
 /*
  * Sample application showing how to initialize the environment
  * and do a basic chain operation.
@@ -9,16 +11,100 @@ import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { createKeys, devAccounts, getBlockNumber, initialize, stakeToProvider } from '../scaffolding/helpers';
 
 const firstNames = [
-  'Emma', 'Liam', 'Olivia', 'Noah', 'Ava', 'Isabella', 'Sophia', 'Jackson', 'Lucas', 'Aiden',
-  'Mia', 'Oliver', 'Amelia', 'Evelyn', 'Elijah', 'Harper', 'Benjamin', 'Ethan', 'Abigail', 'Emily',
-  'Alexander', 'James', 'Scarlett', 'Sebastian', 'Aria', 'Avery', 'Ella', 'Ellie', 'Grace',
-  'Julian', 'Matthew', 'Samuel', 'David', 'Joseph', 'Victoria', 'Gabriel', 'Madison', 'Zoe',
-  'Chloe', 'Penelope', 'Lily', 'Hannah', 'Layla', 'Nathan', 'Lucy', 'Isaac', 'Eva',
-  'Christopher', 'Andrew', 'Aaliyah', 'Sofia', 'Daniel', 'Wyatt', 'Natalie', 'Bella', 'Zachary',
-  'Leo', 'Aubrey', 'Camila', 'Peyton', 'Eli', 'Riley', 'Hazel', 'Sophie', 'Annabelle',
-  'Claire', 'Jordan', 'Julia', 'Landon', 'Mason', 'Sophie', 'Annabelle', 'Claire', 'Jordan',
-  'Julia', 'Landon', 'Caleb', 'Aria', 'Carter', 'Ariana', 'Elena', 'Xavier', 'Naomi', 'Jaxon',
-  'Zara', 'Nora', 'Ezra', 'Ruby', 'Isaiah', 'Alice', 'Eva', 'Kai', 'Quinn', 'Mila'
+  'Emma',
+  'Liam',
+  'Olivia',
+  'Noah',
+  'Ava',
+  'Isabella',
+  'Sophia',
+  'Jackson',
+  'Lucas',
+  'Aiden',
+  'Mia',
+  'Oliver',
+  'Amelia',
+  'Evelyn',
+  'Elijah',
+  'Harper',
+  'Benjamin',
+  'Ethan',
+  'Abigail',
+  'Emily',
+  'Alexander',
+  'James',
+  'Scarlett',
+  'Sebastian',
+  'Aria',
+  'Avery',
+  'Ella',
+  'Ellie',
+  'Grace',
+  'Julian',
+  'Matthew',
+  'Samuel',
+  'David',
+  'Joseph',
+  'Victoria',
+  'Gabriel',
+  'Madison',
+  'Zoe',
+  'Chloe',
+  'Penelope',
+  'Lily',
+  'Hannah',
+  'Layla',
+  'Nathan',
+  'Lucy',
+  'Isaac',
+  'Eva',
+  'Christopher',
+  'Andrew',
+  'Aaliyah',
+  'Sofia',
+  'Daniel',
+  'Wyatt',
+  'Natalie',
+  'Bella',
+  'Zachary',
+  'Leo',
+  'Aubrey',
+  'Camila',
+  'Peyton',
+  'Eli',
+  'Riley',
+  'Hazel',
+  'Sophie',
+  'Annabelle',
+  'Claire',
+  'Jordan',
+  'Julia',
+  'Landon',
+  'Mason',
+  'Sophie',
+  'Annabelle',
+  'Claire',
+  'Jordan',
+  'Julia',
+  'Landon',
+  'Caleb',
+  'Aria',
+  'Carter',
+  'Ariana',
+  'Elena',
+  'Xavier',
+  'Naomi',
+  'Jaxon',
+  'Zara',
+  'Nora',
+  'Ezra',
+  'Ruby',
+  'Isaiah',
+  'Alice',
+  'Eva',
+  'Kai',
+  'Quinn',
+  'Mila',
 ];
 
 function randomName(): string {
@@ -27,38 +113,35 @@ function randomName(): string {
 }
 
 async function incrementBlock() {
-  let blockNumber = await getBlockNumber();
+  const blockNumber = await getBlockNumber();
   console.log(`Incrementing block number: ${blockNumber} to ${blockNumber + 1}`);
   await ExtrinsicHelper.run_to_block(blockNumber + 1);
 }
 
-async function createProvider(providerName: string) : Promise<User> {
+async function createProvider(providerName: string): Promise<User> {
   const builder = new UserBuilder();
   const keypair = createKeys();
-  const provider = await builder
-  .withKeypair(keypair)
-  .asProvider(providerName)
-  .build();
-  
-  return provider
+  const provider = await builder.withKeypair(keypair).asProvider(providerName).build();
+  provider.paysWithCapacity = true;
+
+  return provider;
 }
 
-async function createUserForProvider(provider: User) : Promise<void> {
+async function createUserForProvider(provider: User): Promise<void> {
   console.log(`Creating user for provider ${provider.providerName}`);
   const userName = randomName();
   const keypair = createKeys();
   const builder = new UserBuilder();
-  const userBuilder = builder.withDelegation(provider, []);
-  
+  const userBuilder = builder.withDelegation(provider, []).withProviderPayment().withHandle(userName);
+
   const user = await userBuilder.withKeypair(keypair).build();
-  await user.claimHandleUsingCapacity(provider.keypair, userName);
   console.log(`Created user ${userName} with id ${user.msaId} and handle ${user.handle}`);
-  await incrementBlock
+  await incrementBlock();
 }
 
-async function createProviders(num: number) : Promise<void> {
+async function createProviders(num: number): Promise<void> {
   const aliceKeyPair = devAccounts[0].keys;
-  const minStakingAmount = await ExtrinsicHelper.apiPromise.consts.capacity.minimumStakingAmount;
+  const minStakingAmount = ExtrinsicHelper.apiPromise.consts.capacity.minimumStakingAmount;
   console.log(`Minimum staking amount is ${minStakingAmount.toBigInt()}`);
 
   for (let i = 0; i < num; i++) {
@@ -66,7 +149,7 @@ async function createProviders(num: number) : Promise<void> {
 
     // Stake some tokens to the provider
     console.log(`Staking tokens to provider ${provider.providerName}`);
-    const tokensToStake: bigint = minStakingAmount.toBigInt() + BigInt(Math.floor(Math.random() * 3000000000));
+    const tokensToStake: bigint = minStakingAmount.toBigInt() + BigInt(Math.floor(Math.random() * 300000000000));
     await stakeToProvider(aliceKeyPair, provider.providerId!, tokensToStake);
     console.log(`Created provider ${provider.providerName} with id ${provider.providerId} and staked ${tokensToStake} tokens`);
     await incrementBlock();
@@ -77,9 +160,7 @@ async function createProviders(num: number) : Promise<void> {
       await createUserForProvider(provider);
     }
     await incrementBlock();
-
   }
-
 }
 
 async function main() {
@@ -88,7 +169,6 @@ async function main() {
 
   // Create 10 providers and stake some tokens to them
   await createProviders(10);
-
 }
 
 // Run the main program
@@ -97,4 +177,3 @@ main()
   .finally(async () => {
     await ExtrinsicHelper.disconnect();
   });
- 

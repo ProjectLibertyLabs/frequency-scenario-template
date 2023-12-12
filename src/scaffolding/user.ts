@@ -10,6 +10,7 @@ import { u8aToHex } from '@polkadot/util/u8a/toHex';
 import { u8aWrapBytes } from '@polkadot/util';
 
 export interface IUser {
+  handle?: string;
   msaId: MessageSourceId;
   providerId?: ProviderId;
   providerName?: string;
@@ -27,16 +28,17 @@ export class User implements IUser {
 
   public fundingSource?: KeyringPair;
 
-  public handle: string;
+  public handle?: string;
 
   public paysWithCapacity: boolean = false;
 
-  constructor({ allKeys, msaId, providerId, providerName, fundingSource }: IUser) {
+  constructor({ allKeys, msaId, providerId, providerName, fundingSource, handle }: IUser) {
     this.allKeys = allKeys;
     this.msaId = msaId;
     this.providerId = providerId;
     this.providerName = providerName;
     this.fundingSource = fundingSource;
+    this.handle = handle;
   }
 
   public get hasMSA(): boolean {
@@ -51,7 +53,7 @@ export class User implements IUser {
     return this.allKeys[0];
   }
 
-  private executeOp(op: Extrinsic) {
+  public executeOp(op: Extrinsic) {
     if (this.paysWithCapacity) {
       return op.payWithCapacity();
     }
