@@ -2,9 +2,10 @@ import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfac
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import log from 'loglevel';
+import { sign } from 'crypto';
 import { IUser, User } from './user';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
-import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
+import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
 import { createKeys } from './apiConnection';
 
 interface IUserBuilder {
@@ -17,7 +18,7 @@ interface IUserBuilder {
     schemaIds: (SchemaId | AnyNumber)[];
   };
   initialFundingLevel?: bigint;
-  paymentMethod?: 'token' | 'capacity' | KeyringPair;
+  paymentMethod?: 'token' | 'capacity' | 'provider' | KeyringPair;
   handle?: string;
 }
 
@@ -86,6 +87,10 @@ export class UserBuilder {
     return new UserBuilder({ ...this.values, paymentMethod: 'token' });
   }
 
+  public withProviderPayment() {
+    return new UserBuilder({ ...this.values, paymentMethod: 'provider' });
+  }
+
   public async executeUserOp(op: Extrinsic, error?: any) {
     try {
       const [target, eventMap] = await (async () => {
@@ -95,6 +100,9 @@ export class UserBuilder {
 
           case 'capacity':
             return op.payWithCapacity();
+
+          case 'provider':
+            return [];
 
           default:
             return op.fundAndSend(this.values.paymentMethod);
@@ -125,6 +133,7 @@ export class UserBuilder {
       switch (this.values.paymentMethod) {
         case 'capacity':
         case 'token':
+        case 'provider':
           return getDefaultFundingSource().keys;
 
         default:
@@ -137,7 +146,7 @@ export class UserBuilder {
     const fundingLevel = EXISTENTIAL_DEPOSIT + (this.values.initialFundingLevel ?? 0n);
     const fundingAmount = fundingLevel > freeBalance ? fundingLevel - freeBalance : fundingLevel;
 
-    if (fundingAmount > 0n) {
+    if (fundingAmount > 0n && this.values.paymentMethod !== 'provider') {
       try {
         log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount > EXISTENTIAL_DEPOSIT ? fundingAmount : 'existential deposit'}`);
         await ExtrinsicHelper.transferFunds(fundingSource, this.defaultKeypair, fundingAmount).signAndSend();
@@ -166,10 +175,12 @@ export class UserBuilder {
         const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, schemaIds: this.values.delegation.schemaIds });
         const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
         const op = ExtrinsicHelper.createSponsoredAccountWithDelegation(this.defaultKeypair, this.values.delegation.delegate.keypair, signature, payload);
-        const [result, eventMap] = await this.executeUserOp(
-          op,
-          new Error(`Failed to create a delegated MSA for account ${this.defaultKeypair.address} to provider ${this.values.delegation.delegate.providerId?.toString()}`),
-        );
+        const [result, eventMap] = await (this.values.paymentMethod === 'provider'
+          ? this.values.delegation.delegate.executeOp(op)
+          : this.executeUserOp(
+              op,
+              new Error(`Failed to create a delegated MSA for account ${this.defaultKeypair.address} to provider ${this.values.delegation?.delegate.providerId?.toString()}`),
+            ));
         if (!ExtrinsicHelper.api.events.msa.MsaCreated.is(result)) {
           throw new Error(`Delegated MSA not created`);
         }
@@ -193,11 +204,18 @@ export class UserBuilder {
       }
     }
 
-    // if (this.values.handle) {
-    //   const payload = new PayloadBuilder().asClaimHandlePayload().withBaseHandle(this.values.handle).withExpirationOffset(10).build();
-    //   const op = ExtrinsicHelper.claimHandle(this.defaultKeypair, payload);
-    //   await this.executeUserOp(op, new Error(`Failed to claim handle ${this.values.handle}`));
-    // }
+    if (this.values.handle) {
+      const payload = await generateClaimHandlePayload(this.values.handle);
+      const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('CommonPrimitivesHandlesClaimHandlePayload', payload));
+      const op =
+        this.values.paymentMethod === 'provider'
+          ? ExtrinsicHelper.claimHandleWithProvider(this.defaultKeypair, this.values.delegation?.delegate.keypair!, signature, payload)
+          : ExtrinsicHelper.claimHandle(this.defaultKeypair, payload);
+      const [result, eventMap] = await (this.values.paymentMethod === 'provider' ? op.payWithCapacity() : op.fundAndSend());
+      if (!ExtrinsicHelper.api.events.handles.HandleClaimed.is(result)) {
+        throw new Error(`Handle not claimed`);
+      }
+    }
 
     if ((this.values.allKeys?.length ?? 1) > 1) {
       this.values.allKeys?.slice(1)?.forEach(async (keys) => {

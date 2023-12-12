@@ -2,7 +2,7 @@
 /* eslint-disable no-use-before-define */
 /* eslint-disable new-cap */
 import { KeyringPair } from '@polkadot/keyring/types';
-import { u16, u32, u64, Option, u128 } from '@polkadot/types';
+import { u16, u32, u64, Option, u128, Bytes } from '@polkadot/types';
 import { Codec } from '@polkadot/types/types';
 import { u8aToHex, u8aWrapBytes } from '@polkadot/util';
 import { mnemonicGenerate } from '@polkadot/util-crypto';
@@ -80,6 +80,16 @@ export async function generateDelegationPayload(payloadInputs: AddProviderPayloa
     expiration,
     ...payload,
   };
+}
+
+export async function generateClaimHandlePayload(name: string, expirationOffset = 10) {
+  const handle_vec = new Bytes(ExtrinsicHelper.api.registry, name);
+  const currentBlock = await getBlockNumber();
+  const payload = {
+    baseHandle: handle_vec,
+    expiration: currentBlock + expirationOffset,
+  };
+  return ExtrinsicHelper.api.registry.createType('CommonPrimitivesHandlesClaimHandlePayload', payload);
 }
 
 export async function generateAddKeyPayload(
