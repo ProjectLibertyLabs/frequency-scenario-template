@@ -21,7 +21,7 @@ async function main() {
   await stakeToProvider(alice.keypair, alice.providerId!, 320000000n);
 
   // Use staked Capacity to claim a user handle
-  await alice.claimHandleUsingCapacity("MyNameIsAliceToo");
+  await alice.claimHandleUsingCapacity(alice.keypair, "MyNameIsAliceToo");
   console.log(`Claimed handle ${alice.handle}`);
 }
 
