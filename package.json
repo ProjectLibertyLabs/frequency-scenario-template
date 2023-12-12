@@ -18,7 +18,7 @@
   },
   "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
-    "@dsnp/frequency-schemas": "^1.0.1",
+    "@dsnp/frequency-schemas": "^1.0.3",
     "@dsnp/graph-sdk": "^1.0.1",
     "@frequency-chain/api-augment": "^1.9.0",
     "@polkadot/api": "10.11.1",
@@ -26,7 +26,7 @@
     "@polkadot/types": "10.11.1",
     "@polkadot/util": "12.6.1",
     "@polkadot/util-crypto": "12.6.1",
-    "@types/minimist": "^1.2.2",
+    "@types/minimist": "^1.2.5",
     "@types/node": "^20.3.1",
     "loglevel": "^1.8.1",
     "minimist": "^1.2.8",
