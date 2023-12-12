@@ -35,8 +35,8 @@ export const CHAIN_ENVIRONMENT = {
 // eslint-disable-next-line import/no-mutable-exports
 export let EXISTENTIAL_DEPOSIT: bigint;
 
-export async function initialize(): Promise<void> {
-  await ExtrinsicHelper.initialize();
+export async function initialize(uri?: string): Promise<void> {
+  await ExtrinsicHelper.initialize(uri);
   EXISTENTIAL_DEPOSIT = ExtrinsicHelper.api.consts.balances.existentialDeposit.toBigInt();
 
   if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
