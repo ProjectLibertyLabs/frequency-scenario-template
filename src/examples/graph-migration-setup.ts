@@ -172,7 +172,7 @@ async function main() {
       {
         type: 'AddGraphKey',
         ownerDsnpUserId: user.msaId.toString(),
-        newPublicKey: hexToU8a('0xe3b18e1aa5c84175ec0c516838fb89dd9c947dd348fa38fe2082764bbc82a86f'),
+        newPublicKey: hexToU8a('0x993052b57e8695d9124964f69f624fcc2080be7525c65b1acd089dff235a0e02'),
       } as AddGraphKeyAction,
     ];
     graph.applyActions(actions);
