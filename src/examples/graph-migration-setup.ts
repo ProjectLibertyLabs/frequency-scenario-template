@@ -66,7 +66,7 @@ function createConnection(from: User, to: User, schemaId: number, toKeys?: { key
   return connection;
 }
 
-const AMOUNT_TO_STAKE = 20000000000000n;
+const AMOUNT_TO_STAKE = 2000000000000000n;
 
 async function main() {
   // Connect to chain & initialize API
