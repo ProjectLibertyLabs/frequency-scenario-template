@@ -168,6 +168,7 @@ async function main() {
     }
 
     log.info(`Installing public Graph key for user ${user.msaId.toString()}`);
+    // corresponding private key for tests: 0xf74d39829ac4a814048cbda6b35ee1c3c16fbd2b88f97d552aa344bffb5207a5
     const actions = [
       {
         type: 'AddGraphKey',

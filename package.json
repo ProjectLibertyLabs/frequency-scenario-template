@@ -4,7 +4,7 @@
   "description": "Scaffolding to enable streamlined scripting of local Frequency chain state for development",
   "scripts": {
     "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
-    "run-example": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/examples/graph-migration-setup.ts"
+    "run-example": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/examples/${npm_config_example}.ts"
   },
   "repository": {
     "type": "git",
