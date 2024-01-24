@@ -9,6 +9,7 @@
     "/dist"
   ],
   "scripts": {
+    "prepare": "npm run build",
     "build": "tsc",
     "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
     "run-example": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/examples/${npm_config_example}.ts"
