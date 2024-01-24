@@ -12,7 +12,7 @@ import { firstValueFrom } from 'rxjs';
 import Keyring, { encodeAddress } from '@polkadot/keyring';
 import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers';
 import { env } from './env';
-import { createKeys as apiCreateKeys } from './apiConnection';
+import { apiCreateKeys } from './apiConnection';
 
 export interface Account {
   uri: string;
@@ -52,10 +52,10 @@ export async function initialize(uri?: string): Promise<void> {
       keys: apiCreateKeys(seedPhrase),
     });
   } else {
-    ['//Alice', '//Bob', '//Charlie', '//Dave', '//Eve', '//Ferdie'].forEach((uri) =>
+    ['//Alice', '//Bob', '//Charlie', '//Dave', '//Eve', '//Ferdie'].forEach((u) =>
       devAccounts.push({
-        uri,
-        keys: apiCreateKeys(uri),
+        uri: u,
+        keys: apiCreateKeys(u),
       }),
     );
   }
@@ -149,8 +149,9 @@ export async function generatePaginatedDeleteSignaturePayload(payloadInputs: Pag
   };
 }
 
-export function createKeys(name: string = 'first pair'): KeyringPair {
-  const mnemonic = mnemonicGenerate();
+export function createKeys(keyname?: string, uri?: string): KeyringPair {
+  const name = keyname ?? 'first pair';
+  const mnemonic = uri ?? mnemonicGenerate();
   console.log(`mnemonic: ${mnemonic}`);
   // create & add the pair to the keyring with the type and some additional
   // metadata specified
@@ -169,18 +170,25 @@ export async function fundKeypair(source: KeyringPair, dest: KeyringPair, amount
   await ExtrinsicHelper.transferFunds(source, dest, amount).signAndSend(nonce);
 }
 
-export async function createAndFundKeypair(
-  // eslint-disable-next-line default-param-last
-  amount: bigint = EXISTENTIAL_DEPOSIT,
-  keyName?: string,
-  source?: KeyringPair,
-  nonce?: number,
-): Promise<KeyringPair> {
+export async function createAndFundKeypair({
+  amount,
+  uri,
+  keyName,
+  source,
+  nonce,
+}: {
+  amount?: bigint;
+  uri?: string;
+  keyName?: string;
+  source?: KeyringPair;
+  nonce?: number;
+}): Promise<KeyringPair> {
+  const fundingAmount = amount ?? EXISTENTIAL_DEPOSIT;
   const defaultFundingSource = getDefaultFundingSource();
-  const keypair = createKeys(keyName);
+  const keypair = createKeys(keyName, uri);
 
   // Transfer funds from source (usually pre-funded dev account) to new account
-  await fundKeypair(source || defaultFundingSource.keys, keypair, amount, nonce);
+  await fundKeypair(source || defaultFundingSource.keys, keypair, fundingAmount, nonce);
 
   return keypair;
 }
@@ -192,7 +200,7 @@ export function log(...args: any[]) {
 }
 
 export async function createProviderKeysAndId(): Promise<[KeyringPair, u64]> {
-  const providerKeys = await createAndFundKeypair();
+  const providerKeys = await createAndFundKeypair({});
   const createProviderMsaOp = ExtrinsicHelper.createMsa(providerKeys);
   let providerId = new u64(ExtrinsicHelper.api.registry, 0);
   await createProviderMsaOp.fundAndSend();
@@ -205,7 +213,7 @@ export async function createProviderKeysAndId(): Promise<[KeyringPair, u64]> {
 }
 
 export async function createDelegator(): Promise<[KeyringPair, u64]> {
-  const keys = await createAndFundKeypair();
+  const keys = await createAndFundKeypair({});
   let delegatorMsaId = new u64(ExtrinsicHelper.api.registry, 0);
   const createMsa = ExtrinsicHelper.createMsa(keys);
   const [msaCreatedEvent, _] = await createMsa.fundAndSend();

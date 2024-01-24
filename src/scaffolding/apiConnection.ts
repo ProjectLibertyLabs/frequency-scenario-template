@@ -1,5 +1,5 @@
 import { options } from '@frequency-chain/api-augment';
-import { ApiRx, WsProvider, ApiPromise, Keyring } from '@polkadot/api';
+import { ApiRx, WsProvider, ApiPromise, Keyring, HttpProvider } from '@polkadot/api';
 import { firstValueFrom } from 'rxjs';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { env } from './env';
@@ -13,14 +13,15 @@ export async function connect(providerUrl?: string | string[] | undefined): Prom
   return firstValueFrom(apiObservable);
 }
 
-export async function connectPromise(providerUrl?: string | string[] | undefined): Promise<ApiPromise> {
-  const provider = new WsProvider(providerUrl || env.providerUrl);
+export async function connectPromise(providerUrl?: string): Promise<ApiPromise> {
+  const url = providerUrl ?? env.providerUrl;
+  const provider: HttpProvider | WsProvider = url?.startsWith('http') ? new HttpProvider(url) : new WsProvider(url);
   const api = await ApiPromise.create({ provider, ...options });
   await api.isReady;
   return api;
 }
 
-export function createKeys(uri: string): KeyringPair {
+export function apiCreateKeys(uri: string): KeyringPair {
   if (!keyring) {
     keyring = new Keyring({ type: 'sr25519' });
   }
