@@ -5,7 +5,7 @@ import log from 'loglevel';
 import { IUser, User } from './user';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
-import { createKeys } from './apiConnection';
+import { apiCreateKeys } from './apiConnection';
 
 interface IUserBuilder {
   uri?: string;
@@ -121,7 +121,7 @@ export class UserBuilder {
   public async build(): Promise<User> {
     if (!this.values.allKeys && this.values.uri) {
       this.values.allKeys = [];
-      this.values.allKeys.push(createKeys(this.values.uri));
+      this.values.allKeys.push(apiCreateKeys(this.values.uri));
     }
 
     if (!this.values.allKeys) {
