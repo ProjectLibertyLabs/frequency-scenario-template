@@ -87,6 +87,7 @@ async function main() {
   const capacity = capacityResult.unwrapOr({ totalCapacityIssued: 0n });
   const stakeAmount = AMOUNT_TO_STAKE - (typeof capacity.totalCapacityIssued === 'bigint' ? capacity.totalCapacityIssued : capacity.totalCapacityIssued.toBigInt());
   await ExtrinsicHelper.stake(provider.keypair, provider.providerId, stakeAmount).signAndSend();
+  await ExtrinsicHelper.setEpochLength(devAccounts[0].keys, 10).sudoSignAndSend();
 
   const userBuilder = builder.withDelegation(provider, [publicFollowSchema.id, privateFollowSchema.id, privateFriendSchema.id, publicKeySchema.id]);
 
