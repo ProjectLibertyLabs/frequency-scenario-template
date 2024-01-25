@@ -8,7 +8,7 @@ import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload,
 import { apiCreateKeys } from './apiConnection';
 
 interface IUserBuilder {
-  uri?: string;
+  keyUris?: string[];
   allKeys?: KeyringPair[];
   msaId?: MessageSourceId | AnyNumber;
   providerName?: string;
@@ -32,61 +32,51 @@ export class UserBuilder {
     return this.values.allKeys![0];
   }
 
-  public withKeyUri(uri: string) {
-    if (this.values.allKeys) {
-      console.log('Overriding keys with new key URI');
-    }
-    const input = { ...this.values, uri };
-    delete input.allKeys;
-    return new UserBuilder(input);
+  public withKeyUri(uri: string): UserBuilder {
+    return new UserBuilder({ ...this.values, keyUris: [...(this.values?.keyUris ?? []), uri] });
   }
 
-  public withKeypair(keys: KeyringPair) {
-    if (this.values.uri) {
-      console.log('Overriding key URI with keypair');
-    }
-    const input = { ...this.values };
-    delete input.uri;
-    return new UserBuilder({ ...input, allKeys: [...(input.allKeys ?? []), keys] });
+  public withKeypair(keys: KeyringPair): UserBuilder {
+    return new UserBuilder({ ...this.values, allKeys: [...(this.values?.allKeys ?? []), keys] });
   }
 
-  public withMsaId(msaId: MessageSourceId | AnyNumber) {
+  public withMsaId(msaId: MessageSourceId | AnyNumber): UserBuilder {
     return new UserBuilder({ ...this.values, msaId });
   }
 
-  public withHandle(handle: string) {
+  public withHandle(handle: string): UserBuilder {
     return new UserBuilder({ ...this.values, handle });
   }
 
-  public withDelegation(delegate: User, schemaIds: (SchemaId | AnyNumber)[]) {
+  public withDelegation(delegate: User, schemaIds: (SchemaId | AnyNumber)[]): UserBuilder {
     if (!delegate.isProvider) {
       throw new Error('Delegate must be a registered provider');
     }
     return new UserBuilder({ ...this.values, delegation: { delegate, schemaIds } });
   }
 
-  public asProvider(providerName: string) {
+  public asProvider(providerName: string): UserBuilder {
     return new UserBuilder({ ...this.values, providerName });
   }
 
-  public withFundingSource(keys?: KeyringPair) {
+  public withFundingSource(keys?: KeyringPair): UserBuilder {
     const fundingSource = keys ?? getDefaultFundingSource().keys;
     return new UserBuilder({ ...this.values, paymentMethod: fundingSource });
   }
 
-  public withInitialFundingLevel(amount: bigint) {
+  public withInitialFundingLevel(amount: bigint): UserBuilder {
     return new UserBuilder({ ...this.values, initialFundingLevel: amount });
   }
 
-  public withCapacityPayment() {
+  public withCapacityPayment(): UserBuilder {
     return new UserBuilder({ ...this.values, paymentMethod: 'capacity' });
   }
 
-  public withTokenPayment() {
+  public withTokenPayment(): UserBuilder {
     return new UserBuilder({ ...this.values, paymentMethod: 'token' });
   }
 
-  public withProviderPayment() {
+  public withProviderPayment(): UserBuilder {
     return new UserBuilder({ ...this.values, paymentMethod: 'provider' });
   }
 
@@ -113,15 +103,17 @@ export class UserBuilder {
       }
       return [target, eventMap];
     } catch (e) {
-      console.log(JSON.stringify(e));
+      console.dir(e, { depth: null });
       throw error ?? e;
     }
   }
 
   public async build(): Promise<User> {
-    if (!this.values.allKeys && this.values.uri) {
+    if (!this.values.allKeys) {
       this.values.allKeys = [];
-      this.values.allKeys.push(apiCreateKeys(this.values.uri));
+    }
+    if (this.values.keyUris) {
+      this.values.allKeys.push(...this.values.keyUris.map((key) => apiCreateKeys(key)));
     }
 
     if (!this.values.allKeys) {
@@ -224,7 +216,7 @@ export class UserBuilder {
           if (keyId.unwrap().toString() === msaId.toString()) {
             log.info(`Key ${keys.publicKey} already present in MSA ${msaId.toString()}`);
           } else {
-            log.error(`Skipping key ${keys.publicKey}; already belongs to MSA ${keyId.toString()}`);
+            log.error(`Skipping key ${keys.address}; already belongs to MSA ${keyId.toString()}`);
           }
           return;
         }

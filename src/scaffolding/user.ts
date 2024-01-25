@@ -1,13 +1,13 @@
 /* eslint-disable no-underscore-dangle */
 import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { AnyNumber, Codec } from '@polkadot/types/types';
+import { AnyNumber } from '@polkadot/types/types';
 import { firstValueFrom } from 'rxjs';
 import { Bytes } from '@polkadot/types';
-import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers';
-import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 import { u8aToHex } from '@polkadot/util/u8a/toHex';
 import { u8aWrapBytes } from '@polkadot/util';
+import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers';
+import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
 
 export interface IUser {
   handle?: string;
@@ -128,7 +128,6 @@ export class User implements IUser {
     const proof = {
       Sr25519: u8aToHex(this.keypair.sign(u8aWrapBytes(payloadBytes))),
     };
-
 
     const claimHandlePayload = ExtrinsicHelper.api.registry.createType('CommonPrimitivesHandlesClaimHandlePayload', payload);
     const [result] = await ExtrinsicHelper.claimHandleWithProvider(this.keypair, providerKeys, proof, claimHandlePayload).payWithCapacity();
