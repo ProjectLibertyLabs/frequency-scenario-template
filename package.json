@@ -12,7 +12,7 @@
     "prepare": "npm run build",
     "build": "tsc",
     "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
-    "run-example": "set -a ; source .env ; ts-node -r tsconfig-paths/register src/examples/${npm_config_example}.ts"
+    "run-example": "set -a ; source .env ; ts-node --esm -r tsconfig-paths/register src/examples/${npm_config_example}.ts"
   },
   "repository": {
     "type": "git",
@@ -27,7 +27,7 @@
   "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
     "@dsnp/frequency-schemas": "^1.0.3",
-    "@dsnp/graph-sdk": "^1.0.1",
+    "@dsnp/graph-sdk": "^1.0.3",
     "@frequency-chain/api-augment": "^1.9.0",
     "@polkadot/api": "^10.11.2",
     "@polkadot/keyring": "^12.6.1",
@@ -57,6 +57,7 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.7.1",
     "typescript": "^5.3.3"
   }
 }
