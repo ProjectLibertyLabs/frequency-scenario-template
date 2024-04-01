@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Merge to Main
+
+on:
+  push:
+    branches: ['main']
+jobs:
+  publish-npm-rc:
+    name: Publish NPM Release Candidate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: build
+        run: npm run build
+
+      - name: Version Package
+        env:
+          FULL_SHA: ${{github.sha}}
+        working-directory: dist
+        shell: bash
+        run: npm version --new-version "v0.0.0-${FULL_SHA:0:6}" --no-git-tag-version
+
+        # Required for Granular Access Tokens
+      - name: NPM Access Config
+        run: npm config set //registry.npmjs.org/:_authToken ${{secrets.NODE_AUTH_TOKEN}}
+
+      - name: Publish on NPM @next
+        run: npm publish --verbose --tag next --access public
+        working-directory: dist
