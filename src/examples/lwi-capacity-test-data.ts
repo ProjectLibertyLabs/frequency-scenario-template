@@ -107,7 +107,6 @@ async function incrementBlock(num: number) {
   await ExtrinsicHelper.run_to_block(blockNumber + num);
 }
 
-
 async function createProvider(providerName: string): Promise<User> {
   const builder = new UserBuilder();
   const keypair = createKeys();
