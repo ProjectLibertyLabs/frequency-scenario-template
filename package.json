@@ -1,6 +1,6 @@
 {
   "name": "@amplica-labs/frequency-scenario-template",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Scaffolding to enable streamlined scripting of local Frequency chain state for development",
   "type": "module",
   "main": "dist/index.js",
