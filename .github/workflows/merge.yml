@@ -3,7 +3,7 @@ name: Merge to Main
 
 on:
   push:
-    branches: ['main']
+    branches: ['main', 'chore/publish-npm']
 jobs:
   publish-npm-rc:
     name: Publish NPM Release Candidate
