@@ -33,18 +33,18 @@ const main = async () => {
   const sudo = keyring.addFromUri(sudoUri, {}, 'sr25519');
 
   const delegatorMsaId = await (async () => {
-    if (parseInt(delegator).toString() === delegator) {
+    if (parseInt(delegator, 10).toString() === delegator) {
       return delegator;
     }
-    const handleResp = (await api.rpc.handles.getMsaForHandle(delegator.replace("@", ""))).toJSON();
-    return parseInt(handleResp as string);
+    const handleResp = (await api.rpc.handles.getMsaForHandle(delegator.replace('@', ''))).toJSON();
+    return parseInt(handleResp as string, 10);
   })();
 
-  if (isNaN(delegatorMsaId)) {
+  if (Number.isNaN(delegatorMsaId)) {
     throw new Error(`Unable to resolve ${delegator} to an MSA Id`);
   }
 
-  console.log("Attempting to setup a delegation with:", {
+  console.log('Attempting to setup a delegation with:', {
     providerMsaId,
     delegatorMsaId,
   });

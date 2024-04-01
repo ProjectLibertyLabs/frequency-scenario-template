@@ -13,15 +13,12 @@ async function main() {
 
   const builder = new UserBuilder();
 
-  const alice = await builder
-    .withKeypair(devAccounts[0].keys)
-    .asProvider("ABC")
-    .build();
+  const alice = await builder.withKeypair(devAccounts[0].keys).asProvider('ABC').build();
 
   await stakeToProvider(alice.keypair, alice.providerId!, 320000000n);
 
   // Use staked Capacity to claim a user handle
-  await alice.claimHandleUsingCapacity(alice.keypair, "MyNameIsAliceToo");
+  await alice.claimHandleUsingCapacity(alice.keypair, 'MyNameIsAliceToo');
   console.log(`Claimed handle ${alice.handle}`);
 }
 
@@ -31,4 +28,3 @@ main()
   .finally(async () => {
     await ExtrinsicHelper.disconnect();
   });
- 
