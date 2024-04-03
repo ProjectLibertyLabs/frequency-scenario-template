@@ -1,9 +1,11 @@
+import '@frequency-chain/api-augment';
 import { SchemaId, SchemaResponse } from '@frequency-chain/api-augment/interfaces';
 import { AnyNumber } from '@polkadot/types/types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { firstValueFrom } from 'rxjs';
+import { isArray } from '@polkadot/util';
 import { ModelTypeStr, PayloadLocationStr, Schema, SchemaSettingStr } from './schema';
-import { ExtrinsicHelper } from './extrinsicHelpers';
+import { EventMap, ExtrinsicHelper } from './extrinsicHelpers';
 import { devAccounts } from './helpers';
 
 export interface ISchemaBuilder {
@@ -13,6 +15,8 @@ export interface ISchemaBuilder {
   payloadLocation?: PayloadLocationStr;
   setting?: SchemaSettingStr;
   autodetectExisting?: boolean;
+  name?: string;
+  version?: number;
 }
 
 export class SchemaBuilder {
@@ -24,6 +28,10 @@ export class SchemaBuilder {
     if (values !== undefined) {
       Object.assign(this.values, values);
     }
+  }
+
+  public withNamedVersion(name: string, version?: number): SchemaBuilder {
+    return new SchemaBuilder({ ...this.values, name, version });
   }
 
   public withModel(model: {}): SchemaBuilder {
@@ -64,13 +72,37 @@ export class SchemaBuilder {
   }
 
   public async build(delegatorKeys: KeyringPair): Promise<Schema> {
-    // If no id, we're creating a new schema on-chain
+    let actualName: string | undefined;
+
+    // If no id, but name supplied, look up schema on-chain
+    if (!this.values.id && !!this.values.name) {
+      // Try to look up existing schema by name
+      const response = await ExtrinsicHelper.apiPromise.rpc.schemas.getVersions(this.values.name);
+      if (response.isSome) {
+        const resolvedSchemas = response.unwrap().toArray();
+        if (this.values?.version) {
+          const index = resolvedSchemas.findIndex((resp) => resp.schema_version.toNumber() === this.values.version);
+          if (index !== -1) {
+            this.values.id = resolvedSchemas[index].schema_id.toNumber();
+          }
+        }
+
+        if (!this.values.id && resolvedSchemas.length > 0) {
+          this.values.id = resolvedSchemas[resolvedSchemas.length - 1].schema_id.toNumber();
+        }
+
+        actualName = this.values.name;
+        console.info(`Found schema id ${this.values.id} for ${this.values.name}`);
+      }
+    }
+    // If no ID, we're creating a new schema on-chain
     if (this.values.id === undefined) {
       if ([this.values.model, this.values.modelType, this.values.payloadLocation].some((attr) => attr === undefined)) {
         throw new Error('Missing attribute(s) for schema creation');
       }
 
       let event: any;
+      let eventMap: EventMap;
 
       // Try to auto-detect ID of existing schema
       if (this.values.autodetectExisting) {
@@ -79,49 +111,74 @@ export class SchemaBuilder {
           let schema: SchemaResponse;
           if (!this.existingSchemaMap.has(i)) {
             // eslint-disable-next-line no-await-in-loop
-            schema = (await firstValueFrom(ExtrinsicHelper.api.rpc.schemas.getBySchemaId(i))).unwrap();
+            schema = (await ExtrinsicHelper.apiPromise.rpc.schemas.getBySchemaId(i)).unwrap();
             this.existingSchemaMap.set(i, schema);
           } else {
             schema = this.existingSchemaMap.get(i)!;
           }
 
           if (this.schemaMatches(schema)) {
-            return new Schema(schema.schema_id, schema.model, schema.model_type.type, schema.payload_location.type, []);
+            return new Schema({ id: schema.schema_id, model: schema.model, modelType: schema.model_type.type, payloadLocation: schema.payload_location.type });
           }
         }
       }
 
       if (this.values.setting !== undefined) {
-        [event] = await ExtrinsicHelper.createSchemaWithSettingsGov(
+        [event, eventMap] = await ExtrinsicHelper.createSchemaWithSettingsGov(
           delegatorKeys,
           devAccounts[0].keys,
           this.values.model,
           this.values.modelType!,
           this.values.payloadLocation!,
           this.values.setting!,
+          this.values?.name,
         ).sudoSignAndSend();
       } else {
-        [event] = await ExtrinsicHelper.createSchema(delegatorKeys, this.values.model, this.values.modelType!, this.values.payloadLocation!).fundAndSend();
+        [event, eventMap] = await ExtrinsicHelper.createSchema(
+          delegatorKeys,
+          this.values.model,
+          this.values.modelType!,
+          this.values.payloadLocation!,
+          [],
+          this.values?.name,
+        ).fundAndSend();
       }
       if (!event || !ExtrinsicHelper.api.events.schemas.SchemaCreated.is(event)) {
         throw new Error('Schema not created');
       }
 
-      return new Schema(event.data.schemaId, this.values.model!, this.values.modelType!, this.values.payloadLocation!, this.values.setting ? [this.values.setting] : []);
+      const nameEvent = eventMap?.SchemaNameCreated;
+      if (nameEvent && !isArray(nameEvent) && ExtrinsicHelper.apiPromise.events.schemas.SchemaNameCreated.is(nameEvent)) {
+        actualName = nameEvent.data.name.toString();
+      }
+
+      if (!actualName) {
+        actualName = this.values.name;
+      }
+
+      return new Schema({
+        id: event.data.schemaId,
+        model: this.values.model!,
+        modelType: this.values.modelType!,
+        payloadLocation: this.values.payloadLocation!,
+        settings: this.values.setting ? [this.values.setting] : [],
+        name: actualName,
+      });
     }
 
     // otherwise, use an existing schema id to retrieve the details of a schema from the chain
-    const response = await firstValueFrom(ExtrinsicHelper.api.rpc.schemas.getBySchemaId(this.values.id));
+    const response = await ExtrinsicHelper.apiPromise.rpc.schemas.getBySchemaId(this.values.id);
     if (response.isEmpty) {
       throw new Error(`No schema with id ${this.values.id}`);
     }
     const schema: SchemaResponse = response.unwrap();
-    return new Schema(
-      schema.schema_id,
-      schema.model,
-      schema.model_type.type,
-      schema.payload_location.type,
-      schema.settings.toArray().map((setting) => setting.type),
-    );
+    return new Schema({
+      id: schema.schema_id,
+      model: schema.model,
+      modelType: schema.model_type.type,
+      payloadLocation: schema.payload_location.type,
+      settings: schema.settings.toArray().map((setting) => setting.type),
+      name: actualName,
+    });
   }
 }
