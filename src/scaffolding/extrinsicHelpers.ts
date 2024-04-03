@@ -18,9 +18,10 @@ import {
   SchemaResponse,
 } from '@frequency-chain/api-augment/interfaces';
 import { u8aToHex } from '@polkadot/util/u8a/toHex';
-import { u8aWrapBytes } from '@polkadot/util';
+import { isArray, u8aWrapBytes } from '@polkadot/util';
 import type { Call } from '@polkadot/types/interfaces/runtime';
 import { KeyringPair } from '@polkadot/keyring/types';
+import util from 'util';
 import { connect, connectPromise } from './apiConnection';
 // eslint-disable-next-line import/no-cycle
 import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers';
@@ -41,6 +42,12 @@ export type AddProviderPayload = {
 };
 export type ItemizedSignaturePayload = {
   msaId?: u64;
+  schemaId?: u16;
+  targetHash?: u32;
+  expiration?: any;
+  actions?: any;
+};
+export type ItemizedSignaturePayloadV2 = {
   schemaId?: u16;
   targetHash?: u32;
   expiration?: any;
@@ -73,6 +80,10 @@ export class EventError extends Error {
 
   rawError: DispatchError | SpRuntimeDispatchError;
 
+  method?: string = '';
+
+  args?: string[] = [];
+
   constructor(source: DispatchError | SpRuntimeDispatchError) {
     super();
 
@@ -81,6 +92,8 @@ export class EventError extends Error {
       this.name = decoded.name;
       this.message = decoded.docs.join(' ');
       this.section = decoded.section;
+      this.method = decoded.method;
+      this.args = decoded.args;
     } else {
       this.name = source.type;
       this.message = source.type;
@@ -90,11 +103,25 @@ export class EventError extends Error {
   }
 
   public toString() {
-    return `${this.section}.${this.name}: ${this.message}`;
+    let result = this.section;
+    if (this.method) {
+      result += `.${this.method}`;
+    }
+
+    if (this.args?.length) {
+      result += `(${JSON.stringify(this.args)})`;
+    }
+
+    result += `: ${this.name}: ${this.message}`;
+    return result;
+  }
+
+  [util.inspect.custom]() {
+    return this.toString();
   }
 }
 
-export type EventMap = { [key: string]: Event };
+export type EventMap = { [key: string]: Event | Event[] };
 
 function eventKey(event: Event): string {
   return `${event.section}.${event.method}`;
@@ -135,7 +162,6 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
 
   private extrinsic: () => SubmittableExtrinsic<'rxjs', T>;
 
-  // private call: Call;
   private keys: KeyringPair;
 
   public api: ApiRx;
@@ -174,11 +200,12 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
     );
   }
 
-  public payWithCapacity(nonce?: number): Promise<ParsedEventResult> {
+  public payWithCapacity(nonce?: number, keys?: KeyringPair): Promise<ParsedEventResult> {
+    const keypair = keys ?? this.keys;
     return firstValueFrom(
       this.api.tx.frequencyTxPayment
         .payWithCapacity(this.extrinsic())
-        .signAndSend(this.keys, { nonce })
+        .signAndSend(keypair, { nonce })
         .pipe(
           filter(({ status }) => status.isInBlock || status.isFinalized),
           this.parseResult(this.event),
@@ -226,9 +253,23 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
       }),
       map((result: ISubmittableResult) =>
         result.events.reduce((acc, { event }) => {
-          acc[eventKey(event)] = event;
+          const k = eventKey(event);
+          if (Object.keys(acc).includes(k)) {
+            const existingValue = acc[k];
+            if (isArray(existingValue)) {
+              existingValue.push(event);
+            } else {
+              acc[k] = [existingValue, event];
+            }
+          } else {
+            acc[k] = event;
+          }
           if (targetEvent && targetEvent.is(event)) {
-            acc.defaultEvent = event;
+            if (isArray(acc.defaultEvent)) {
+              acc.defaultEvent.push(event);
+            } else {
+              acc.defaultEvent = event;
+            }
           }
           if (this.api.events.sudo.Sudid.is(event)) {
             const { sudoResult } = event.data;
@@ -244,7 +285,7 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
       map((em) => {
         // const result: ParsedEventResult<T, N> = [undefined, {}];
         const result: ParsedEventResult = [undefined, {}];
-        if (targetEvent && targetEvent.is(em?.defaultEvent)) {
+        if (targetEvent && targetEvent.is(isArray(em?.defaultEvent) ? em?.defaultEvent[0] : em?.defaultEvent)) {
           result[0] = em.defaultEvent;
         }
         result[1] = em;
@@ -299,12 +340,12 @@ export class ExtrinsicHelper {
   }
 
   /** Schema Extrinsics */
-  public static createSchema(keys: KeyringPair, model: any, modelType: ModelTypeStr, payloadLocation: PayloadLocationStr): Extrinsic {
+  public static createSchema(keys: KeyringPair, model: any, modelType: ModelTypeStr, payloadLocation: PayloadLocationStr, grants?: SchemaSettingStr[], name?: string): Extrinsic {
     // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
     // We'll just force to an actual PayloadLocation to resolve.
     const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchema(JSON.stringify(model), modelType, payloadLocationReal),
+      () => ExtrinsicHelper.api.tx.schemas.createSchemaV3(JSON.stringify(model), modelType, payloadLocationReal, grants || [], name || null),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );
@@ -318,12 +359,13 @@ export class ExtrinsicHelper {
     modelType: ModelTypeStr,
     payloadLocation: PayloadLocationStr,
     grant: SchemaSettingStr,
+    name?: string,
   ): Extrinsic {
     // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
     // We'll just force to an actual PayloadLocation to resolve.
     const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernance(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, [grant]),
+      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, [grant], name || null),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );
