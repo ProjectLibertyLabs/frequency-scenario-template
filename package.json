@@ -5,7 +5,9 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.js",
-  "files": ["/dist"],
+  "files": [
+    "/dist"
+  ],
   "scripts": {
     "prepare": "npm run build",
     "build": "tsc && node scripts/package.cjs",
@@ -27,7 +29,7 @@
   "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
   "dependencies": {
     "@dsnp/frequency-schemas": "^1.1.0",
-    "@dsnp/graph-sdk": "^1.0.3",
+    "@dsnp/graph-sdk": "^1.1.1",
     "@frequency-chain/api-augment": "^1.11.1",
     "@polkadot/api": "^10.12.4",
     "@polkadot/keyring": "^12.6.2",

@@ -10,33 +10,26 @@ import {
   SchemaConfig,
   DsnpVersion,
   Graph,
-  DevEnvironment,
   DsnpKeys,
   EnvironmentType,
-  ConnectAction,
   ConnectionType,
   PrivacyType,
   ImportBundleBuilder,
-  Update,
   KeyData,
   ImportBundle,
   GraphKeyPair,
   GraphKeyType,
+  EnvironmentInterface,
 } from '@dsnp/graph-sdk';
-import { firstValueFrom } from 'rxjs';
-import log, { enableAll } from 'loglevel';
+import log from 'loglevel';
 import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { User } from '#app/scaffolding/user';
-import { assert, hexToU8a } from '@polkadot/util';
-import { Option } from '@polkadot/types';
-import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
+import { hexToU8a } from '@polkadot/util';
 import minimist from 'minimist';
 import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
 import { initialize, devAccounts } from '../scaffolding/helpers';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
-import { UserBuilder } from '../scaffolding/user-builder';
 
-function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
+function getDevTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
   config.sdkMaxStaleFriendshipDays = 100;
   config.maxPageId = 100;
@@ -58,48 +51,52 @@ async function main() {
   log.setLevel('trace');
 
   // Get graph schema IDs
-  const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
-  const publicFollowSchema = await schemaBuilder
-    .withNamedVersion('dsnp.public-follows', 1)
-    .withModel({ ...userPublicFollows, doc: 'Public follow schema' })
-    .build(devAccounts[0].keys);
-  // const publicFriendSchema = await schemaBuilder
-  //   .withNamedVersion('dsnp.public-connections', 1)
-  //   .withModel({ ...userPublicFollows, doc: 'Public friend schema' })
-  //   .build(devAccounts[0].keys);
-  const privateFollowSchema = await schemaBuilder.withNamedVersion('dsnp.private-follows', 1).withModel(userPrivateFollows).build(devAccounts[0].keys);
-  const privateFriendSchema = await schemaBuilder.withNamedVersion('dsnp.private-connections', 1).withModel(userPrivateConnections).build(devAccounts[0].keys);
-  const publicKeySchema = await schemaBuilder
-    .withNamedVersion('dsnp.public-key-key-agreement', 1)
-    .withPayloadLocation('Itemized')
-    .withModel(publicKey)
-    .withSetting('AppendOnly')
-    .build(devAccounts[0].keys);
 
-  const schemaMap: { [key: number]: SchemaConfig } = {};
-  schemaMap[publicFollowSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Follow,
-    privacyType: PrivacyType.Public,
-  };
-  // schemaMap[publicFriendSchema.id.toNumber()] = {
-  //   dsnpVersion: DsnpVersion.Version1_0,
-  //   connectionType: ConnectionType.Friendship,
-  //   privacyType: PrivacyType.Public,
-  // };
-  schemaMap[privateFollowSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Follow,
-    privacyType: PrivacyType.Private,
-  };
-  schemaMap[privateFriendSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Friendship,
-    privacyType: PrivacyType.Private,
-  };
-  // const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap, publicKeySchema.id) };
-  const environment = { environmentType: EnvironmentType.Mainnet };
+  // For local chains  with Frequency 1.10 or higher, or Testnet (Paseo or Rococo), we can look up the schemas using schema names
+  // For mainnet, until it's upgraded to 1.10, we need to query the graph config
+  const environmentType: string = EnvironmentType.Mainnet;
+  let environment: EnvironmentInterface;
+
+  if (environmentType === EnvironmentType.Dev) {
+    const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
+    const publicFollowSchema = await schemaBuilder
+      .withNamedVersion('dsnp.public-follows', 1)
+      .withModel({ ...userPublicFollows, doc: 'Public follow schema' })
+      .build(devAccounts[0].keys);
+    const privateFollowSchema = await schemaBuilder.withNamedVersion('dsnp.private-follows', 1).withModel(userPrivateFollows).build(devAccounts[0].keys);
+    const privateFriendSchema = await schemaBuilder.withNamedVersion('dsnp.private-connections', 1).withModel(userPrivateConnections).build(devAccounts[0].keys);
+    const publicKeySchema = await schemaBuilder
+      .withNamedVersion('dsnp.public-key-key-agreement', 1)
+      .withPayloadLocation('Itemized')
+      .withModel(publicKey)
+      .withSetting('AppendOnly')
+      .build(devAccounts[0].keys);
+
+    const schemaMap: { [key: number]: SchemaConfig } = {};
+    schemaMap[publicFollowSchema.id.toNumber()] = {
+      dsnpVersion: DsnpVersion.Version1_0,
+      connectionType: ConnectionType.Follow,
+      privacyType: PrivacyType.Public,
+    };
+    schemaMap[privateFollowSchema.id.toNumber()] = {
+      dsnpVersion: DsnpVersion.Version1_0,
+      connectionType: ConnectionType.Follow,
+      privacyType: PrivacyType.Private,
+    };
+    schemaMap[privateFriendSchema.id.toNumber()] = {
+      dsnpVersion: DsnpVersion.Version1_0,
+      connectionType: ConnectionType.Friendship,
+      privacyType: PrivacyType.Private,
+    };
+
+    environment = { environmentType, config: getDevTestConfig(schemaMap, publicKeySchema.id) } as EnvironmentInterface;
+  } else {
+    environment = { environmentType: environmentType as EnvironmentType };
+  }
   const graph = new Graph(environment);
+
+  const { schemaMap } = graph.getGraphConfig(environment);
+  const publicKeySchemaId = graph.getGraphConfig(environment).graphPublicKeySchemaId;
 
   // Fetch graphs
   let bundleBuilder = new ImportBundleBuilder().withDsnpUserId(msaId.toString());
@@ -116,7 +113,7 @@ async function main() {
   }
 
   // Fetch public key from chain
-  const publicKeys: ItemizedStoragePageResponse = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msaId, publicKeySchema.id);
+  const publicKeys: ItemizedStoragePageResponse = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msaId, publicKeySchemaId);
   const keyData: KeyData[] = publicKeys.items.toArray().map((chainKey) => ({
     index: chainKey.index.toNumber(),
     content: hexToU8a(chainKey.payload.toHex()),
