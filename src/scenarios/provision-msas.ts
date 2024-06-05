@@ -1,3 +1,4 @@
+/* eslint-disable no-param-reassign */
 import { MessageSourceId } from '@frequency-chain/api-augment/interfaces';
 import { SubmittableExtrinsic } from '@polkadot/api/types';
 import Keyring from '@polkadot/keyring';
@@ -6,7 +7,9 @@ import { AnyNumber, ISubmittableResult } from '@polkadot/types/types';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { uniqueNamesGenerator, names, colors } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
-import { u8aToHex, u8aWrapBytes } from '@polkadot/util';
+import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
+import { getAddGraphKeyPayload, getCurrentPublicGraphKey } from '#app/scaffolding/graph';
+import { GraphKeyPair, GraphKeyType } from '@dsnp/graph-sdk';
 import { AddProviderPayload, ExtrinsicHelper, Sr25519Signature, signPayloadSr25519 } from '..';
 
 export type ChainUser = {
@@ -14,24 +17,21 @@ export type ChainUser = {
   keypair: KeyringPair;
   msaId?: MessageSourceId;
   handle?: string;
+  graphKeyPair?: GraphKeyPair;
   create?: () => SubmittableExtrinsic<'promise', ISubmittableResult>;
   claimHandle?: () => SubmittableExtrinsic<'promise', ISubmittableResult>;
   addGraphKey?: () => SubmittableExtrinsic<'promise', ISubmittableResult>;
-  resetGraph?: (() => SubmittableExtrinsic<'promise', ISubmittableResult>)[];
+  graphUpdates?: (() => SubmittableExtrinsic<'promise', ISubmittableResult>)[];
 };
 
 export const users: ChainUser[] = [];
 
 const DEFAULT_SCHEMAS = [5, 7, 8, 9, 10];
 const keyring = new Keyring({ type: 'sr25519' });
-
-function initializeLocalUsers(baseSeed: string, numUsers: number) {
-  new Array(numUsers).fill(0).forEach((_, i) => {
-    const uri = `${baseSeed}//${i}`;
-    users.push({ uri, keypair: keyring.createFromUri(uri) });
-  });
-  console.log(`Created keys for ${numUsers} accounts`);
-}
+const wellKnownGraphKeypair = {
+  publicKey: '0x0514f63edc89d414061bf451cc99b1f2b43fac920c351be60774559a31523c75',
+  privateKey: '0x1c15b6d1af4716615a4eb83a2dfba3284e1c0a199603572e7b95c164f7ad90e3',
+};
 
 async function resolveUsersFromChain(): Promise<void> {
   const addresses = users.map((u) => u.keypair.address);
@@ -51,6 +51,16 @@ async function resolveUsersFromChain(): Promise<void> {
     }
   });
   console.log(`Resolved ${users.filter((u) => u?.msaId).length} existing user accounts on-chain`);
+}
+
+export async function initializeLocalUsers(baseSeed: string, numUsers: number): Promise<void> {
+  new Array(numUsers).fill(0).forEach((_, i) => {
+    const uri = `${baseSeed}//${i}`;
+    users.push({ uri, keypair: keyring.createFromUri(uri) });
+  });
+  console.log(`Created keys for ${numUsers} accounts`);
+
+  await resolveUsersFromChain();
 }
 
 async function getCurrentBlockNumber(): Promise<number> {
@@ -84,7 +94,7 @@ function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumb
   return { payload, proof };
 }
 
-async function provisionLocalUserCreationExtrinsics(provider: ChainUser, schemaIds?: AnyNumber[], allocateHandle = false): Promise<void> {
+export async function provisionLocalUserCreationExtrinsics(provider: ChainUser, schemaIds?: AnyNumber[], allocateHandle = false): Promise<void> {
   const currentBlock = await getCurrentBlockNumber();
   users
     .filter((u) => !u?.msaId)
@@ -101,17 +111,44 @@ async function provisionLocalUserCreationExtrinsics(provider: ChainUser, schemaI
     });
 }
 
-async function provisionUserGraphReset(user: ChainUser, schemaId: AnyNumber) {
+export async function provisionUserGraphReset(user: ChainUser, schemaId: AnyNumber) {
   if (!user?.msaId) {
     return;
   }
   const { msaId } = user;
 
   const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
-  if (!user?.resetGraph) {
+  if (!user?.graphUpdates) {
     // eslint-disable-next-line no-param-reassign
-    user.resetGraph = [];
+    user.graphUpdates = [];
   }
 
-  user.resetGraph.push(...pages.toArray().map((page) => () => ExtrinsicHelper.apiPromise.tx.statefulStorage.deletePage(msaId, schemaId, page.page_id, page.content_hash)));
+  user.graphUpdates.push(...pages.toArray().map((page) => () => ExtrinsicHelper.apiPromise.tx.statefulStorage.deletePage(msaId, schemaId, page.page_id, page.content_hash)));
+}
+
+export async function provisionUserGraphEncryptionKey(user: ChainUser, useWellKnownKey = true) {
+  const currentPubKey = await getCurrentPublicGraphKey(user.msaId!);
+  if (user?.graphKeyPair && currentPubKey === u8aToHex(user.graphKeyPair.publicKey)) {
+    return;
+  }
+
+  if (!user?.graphKeyPair && useWellKnownKey) {
+    user.graphKeyPair = {
+      keyType: GraphKeyType.X25519,
+      publicKey: hexToU8a(wellKnownGraphKeypair.publicKey),
+      secretKey: hexToU8a(wellKnownGraphKeypair.privateKey),
+    };
+
+    if (currentPubKey === wellKnownGraphKeypair.publicKey) {
+      return;
+    }
+
+    if (!user?.graphUpdates) {
+      user.graphUpdates = [];
+    }
+
+    const { payload: addGraphKeyPayload, proof: addGraphKeyProof } = await getAddGraphKeyPayload(u8aToHex(user.graphKeyPair.publicKey), user.keypair);
+
+    user.graphUpdates.push(() => ExtrinsicHelper.apiPromise.tx.statefulStorage.applyItemActionsWithSignatureV2(user.keypair.publicKey, addGraphKeyProof, addGraphKeyPayload));
+  }
 }
