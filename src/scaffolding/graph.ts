@@ -4,8 +4,10 @@ import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a, u8aToHex } from '@polkadot/util';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { ExtrinsicHelper } from './extrinsicHelpers';
-import { ItemizedSignaturePayload, Schema, SchemaBuilder, Sr25519Signature, signPayloadSr25519 } from '..';
+import { ExtrinsicHelper, ItemizedSignaturePayload } from './extrinsicHelpers';
+import { Schema } from './schema';
+import { SchemaBuilder } from './schema-builder';
+import { Sr25519Signature, signPayloadSr25519 } from './helpers';
 
 // let publicGraphKeyAvroType: AvroType;
 let publicGraphKeySchema: Schema;
@@ -47,7 +49,11 @@ export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<HexStr
   return u8aToHex(publicKey);
 }
 
-export async function getAddGraphKeyPayload(publicKey: HexString, signingKeys: KeyringPair): Promise<{ payload: ItemizedSignaturePayload; proof: Sr25519Signature }> {
+export async function getAddGraphKeyPayload(
+  publicKey: HexString,
+  signingKeys: KeyringPair,
+  currentBlock?: number,
+): Promise<{ payload: ItemizedSignaturePayload; proof: Sr25519Signature }> {
   const keyString = publicKey.replace(/^0x/, '');
   const graphKey = {
     publicKey: Buffer.from(keyString, 'hex'),
@@ -69,7 +75,7 @@ export async function getAddGraphKeyPayload(publicKey: HexString, signingKeys: K
     schemaId: 7,
     actions: addAction,
   };
-  const currentBlockNumber = (await ExtrinsicHelper.apiPromise.rpc.chain.getBlock()).block.header.number.toNumber();
+  const currentBlockNumber = currentBlock || (await ExtrinsicHelper.apiPromise.rpc.chain.getBlock()).block.header.number.toNumber();
   graphKeyAction.expiration = currentBlockNumber + ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const payloadBytes = ExtrinsicHelper.api.registry.createType('PalletStatefulStorageItemizedSignaturePayloadV2', graphKeyAction);
   const proof = signPayloadSr25519(signingKeys, payloadBytes);

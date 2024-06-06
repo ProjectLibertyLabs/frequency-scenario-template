@@ -1,9 +1,9 @@
 import { FrameSystemEventRecord } from '@polkadot/types/lookup';
-import { Vec } from '@polkadot/types';
+import { Vec } from '@polkadot/types-codec';
 import { AugmentedSubmittable, SubmittableExtrinsic, VoidFn } from '@polkadot/api/types';
-import { AnyTuple, IMethod, ISubmittableResult } from '@polkadot/types/types';
-import { ChainUser } from '#app/scenarios/provision-msas';
+import { IMethod, ISubmittableResult } from '@polkadot/types/types';
 import { Call } from '@polkadot/types/interfaces';
+import { KeyringPair } from '@polkadot/keyring/types';
 import { EventError, ExtrinsicHelper } from './extrinsicHelpers';
 
 export interface PromiseTracker {
@@ -13,11 +13,10 @@ export interface PromiseTracker {
   numPending: number;
 }
 
-const maxBatch = ExtrinsicHelper.apiPromise.consts.frequencyTxPayment.maximumCapacityBatchLength.toNumber();
 const batchesTracker: PromiseTracker = { numPending: 0 };
 let unsubEvents: VoidFn = () => {};
 
-function watchAndHandleChainEvents(handlers: ((eventRecord: FrameSystemEventRecord) => void)[]): Promise<VoidFn> {
+function watchAndHandleChainEvents(handlers: ((events: Vec<FrameSystemEventRecord>) => void)[]): Promise<VoidFn> {
   return ExtrinsicHelper.apiPromise.query.system.events((events: Vec<FrameSystemEventRecord>) => {
     events.forEach((eventRecord) => {
       const { event } = eventRecord;
@@ -28,26 +27,34 @@ function watchAndHandleChainEvents(handlers: ((eventRecord: FrameSystemEventReco
           (batchesTracker?.resolve ?? (() => {}))();
         }
       }
-      handlers.forEach((handler) => handler(eventRecord));
     });
+    handlers.forEach((handler) => handler(events));
   });
 }
 
 async function batchAndWaitForExtrinsics(
-  provider: ChainUser,
+  payorKeys: KeyringPair,
   extrinsics: SubmittableExtrinsic<'promise', ISubmittableResult>[],
-  handlers: ((eventRecord: FrameSystemEventRecord) => void)[],
+  handlers: ((events: Vec<FrameSystemEventRecord>) => void)[],
   batchAll: AugmentedSubmittable<(calls: Vec<Call> | (Call | IMethod | string | Uint8Array)[]) => SubmittableExtrinsic<'promise'>, [Vec<Call>]>,
 ) {
-  unsubEvents = await watchAndHandleChainEvents(handlers);
-
   batchesTracker.promise = new Promise((resolve, reject) => {
     batchesTracker.resolve = resolve;
     batchesTracker.reject = reject;
     batchesTracker.numPending = 0;
   });
+  unsubEvents = await watchAndHandleChainEvents(handlers);
 
-  let nonce = (await ExtrinsicHelper.apiPromise.query.system.account(provider.keypair.publicKey)).nonce.toNumber();
+  const unsubBlocks = await ExtrinsicHelper.apiPromise.rpc.chain.subscribeFinalizedHeads(() => {
+    const count = extrinsics.length + batchesTracker.numPending;
+    console.log(`Extrinsincs remaining: ${count}`);
+    if (count === 0) {
+      unsubBlocks();
+    }
+  });
+
+  const maxBatch = ExtrinsicHelper.apiPromise.consts.frequencyTxPayment.maximumCapacityBatchLength.toNumber();
+  let nonce = (await ExtrinsicHelper.apiPromise.query.system.account(payorKeys.publicKey)).nonce.toNumber();
 
   while (extrinsics.length > 0) {
     if (batchesTracker.numPending < 100) {
@@ -55,7 +62,7 @@ async function batchAndWaitForExtrinsics(
       const xToPost = extrinsics.splice(0, maxBatch);
       batchesTracker.numPending += 1;
       // eslint-disable-next-line no-await-in-loop, no-plusplus
-      const unsub = await batchAll(xToPost).signAndSend(provider.keypair, { nonce: nonce++ }, (x) => {
+      const unsub = await batchAll(xToPost).signAndSend(payorKeys, { nonce: nonce++ }, (x) => {
         const { status } = x;
         if (x.dispatchError) {
           unsub();
@@ -82,18 +89,18 @@ async function batchAndWaitForExtrinsics(
   unsubEvents();
 }
 
-async function batchWithUtilityAndWaitForExtrinsics(
-  provider: ChainUser,
+export async function batchWithUtilityAndWaitForExtrinsics(
+  payorKeys: KeyringPair,
   extrinsics: SubmittableExtrinsic<'promise', ISubmittableResult>[],
-  handlers: ((eventRecord: FrameSystemEventRecord) => void)[],
+  handlers: ((events: Vec<FrameSystemEventRecord>) => void)[],
 ) {
-  return batchAndWaitForExtrinsics(provider, extrinsics, handlers, ExtrinsicHelper.apiPromise.tx.utility.batchAll);
+  return batchAndWaitForExtrinsics(payorKeys, extrinsics, handlers, ExtrinsicHelper.apiPromise.tx.utility.batchAll);
 }
 
-async function batchWithCapacityAndWaitForExtrinsics(
-  provider: ChainUser,
+export async function batchWithCapacityAndWaitForExtrinsics(
+  payorKeys: KeyringPair,
   extrinsics: SubmittableExtrinsic<'promise', ISubmittableResult>[],
-  handlers: ((eventRecord: FrameSystemEventRecord) => void)[],
+  handlers: ((events: Vec<FrameSystemEventRecord>) => void)[],
 ) {
-  return batchAndWaitForExtrinsics(provider, extrinsics, handlers, ExtrinsicHelper.apiPromise.tx.frequencyTxPayment.payWithCapacityBatchAll);
+  return batchAndWaitForExtrinsics(payorKeys, extrinsics, handlers, ExtrinsicHelper.apiPromise.tx.frequencyTxPayment.payWithCapacityBatchAll);
 }
