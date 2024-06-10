@@ -5,23 +5,35 @@ export type ModelTypeStr = 'AvroBinary' | 'Parquet';
 export type PayloadLocationStr = 'OnChain' | 'Ipfs' | 'Itemized' | 'Paginated';
 export type SchemaSettingStr = 'AppendOnly' | 'SignatureRequired';
 
-export class Schema {
-  private _id: SchemaId;
+export interface ISchema {
+  id: SchemaId;
+  model: object;
+  modelType: ModelTypeStr;
+  payloadLocation: PayloadLocationStr;
+  settings?: SchemaSettingStr[];
+  name?: string;
+}
 
-  private _model: {};
+export class Schema implements ISchema {
+  private readonly _id: SchemaId;
 
-  private _modelType: ModelTypeStr;
+  private readonly _model: {};
 
-  private _payloadLocation: PayloadLocationStr;
+  private readonly _modelType: ModelTypeStr;
 
-  private _settings: SchemaSettingStr[];
+  private readonly _payloadLocation: PayloadLocationStr;
 
-  constructor(id: SchemaId, model: {}, modelType: ModelTypeStr, payloadLocation: PayloadLocationStr, settings?: SchemaSettingStr[]) {
-    this._model = model;
-    this._modelType = modelType;
-    this._payloadLocation = payloadLocation;
-    this._settings = settings ?? [];
-    this._id = id;
+  private readonly _settings: SchemaSettingStr[];
+
+  private readonly _name: string | undefined;
+
+  constructor(source: ISchema) {
+    this._model = source.model;
+    this._modelType = source.modelType;
+    this._payloadLocation = source.payloadLocation;
+    this._settings = source?.settings ?? [];
+    this._id = source.id;
+    this._name = source?.name;
   }
 
   public get id() {
@@ -42,5 +54,9 @@ export class Schema {
 
   public get settings() {
     return this._settings;
+  }
+
+  public get name() {
+    return this?._name;
   }
 }
