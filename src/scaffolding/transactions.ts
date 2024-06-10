@@ -6,6 +6,8 @@ import { Call } from '@polkadot/types/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { EventError, ExtrinsicHelper } from './extrinsicHelpers';
 
+export type ChainEventHandler = (events: Vec<FrameSystemEventRecord>) => void;
+
 export interface PromiseTracker {
   resolve?: () => void;
   reject?: (reason?: any) => void;
@@ -16,7 +18,7 @@ export interface PromiseTracker {
 const batchesTracker: PromiseTracker = { numPending: 0 };
 let unsubEvents: VoidFn = () => {};
 
-function watchAndHandleChainEvents(handlers: ((events: Vec<FrameSystemEventRecord>) => void)[]): Promise<VoidFn> {
+function watchAndHandleChainEvents(handlers: ChainEventHandler[]): Promise<VoidFn> {
   return ExtrinsicHelper.apiPromise.query.system.events((events: Vec<FrameSystemEventRecord>) => {
     events.forEach((eventRecord) => {
       const { event } = eventRecord;
@@ -35,7 +37,7 @@ function watchAndHandleChainEvents(handlers: ((events: Vec<FrameSystemEventRecor
 async function batchAndWaitForExtrinsics(
   payorKeys: KeyringPair,
   extrinsics: SubmittableExtrinsic<'promise', ISubmittableResult>[],
-  handlers: ((events: Vec<FrameSystemEventRecord>) => void)[],
+  handlers: ChainEventHandler[],
   batchAll: AugmentedSubmittable<(calls: Vec<Call> | (Call | IMethod | string | Uint8Array)[]) => SubmittableExtrinsic<'promise'>, [Vec<Call>]>,
 ) {
   batchesTracker.promise = new Promise((resolve, reject) => {
@@ -92,7 +94,7 @@ async function batchAndWaitForExtrinsics(
 export async function batchWithUtilityAndWaitForExtrinsics(
   payorKeys: KeyringPair,
   extrinsics: SubmittableExtrinsic<'promise', ISubmittableResult>[],
-  handlers: ((events: Vec<FrameSystemEventRecord>) => void)[],
+  handlers: ChainEventHandler[],
 ) {
   return batchAndWaitForExtrinsics(payorKeys, extrinsics, handlers, ExtrinsicHelper.apiPromise.tx.utility.batchAll);
 }
