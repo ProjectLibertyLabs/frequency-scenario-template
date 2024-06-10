@@ -7,9 +7,9 @@ import { ChainUser } from './types';
  * Description: Create a new MSA and register as a provider.
  *              The account associated with the seed must be appropriately funded.
  *
- * @param seed - Seed phrase/URI to use for key generation
- * @param name - Provider name to register
- * @returns User
+ * @param {string} seed - Seed phrase/URI to use for key generation
+ * @param {string} name - Provider name to register
+ * @returns {Promise<ChainUser>}
  */
 export async function provisionProvider(seed: string, name: string): Promise<ChainUser> {
   const builder = new UserBuilder().asProvider(name).withKeyUri(seed).withTokenPayment();
@@ -22,9 +22,10 @@ export async function provisionProvider(seed: string, name: string): Promise<Cha
  * Description: Ensure that a Provider has at least N tokens staked for Capacity. If the total amount currently staked
  *              is less than N, stake the amount of the shortfall.
  *
- * @param stakingKeys - keypair of account with funds being staked
- * @param amount - amount to stake in Plancks
- * @param targetProviderId - MSA ID of provider to which tokens will be staked
+ * @param {KeyringPair} stakingKeys - keypair of account with funds being staked
+ * @param {number|bigint} amount - amount to stake in Plancks
+ * @param {AnyNumber} targetProviderId - MSA ID of provider to which tokens will be staked
+ * @returns {Promise<void>}
  */
 export async function ensureProviderStake(stakingKeys: KeyringPair, amount: number | bigint, targetProviderId: AnyNumber): Promise<void> {
   const capacity = await ExtrinsicHelper.apiPromise.query.capacity.capacityLedger(targetProviderId);

@@ -26,9 +26,17 @@ const wellKnownGraphKeypair = {
 };
 const decoder = new StringDecoder('utf-8');
 
+/**
+ * Given an array of ChainUser, for each user that does not have an `msaId` populated,
+ * attempt to look up an existing MSA ID using the keypair. If an existing MSA is found,
+ * also look up the associated handle.
+ *
+ * @param {ChainUser[]} users - an array of users with keypairs to be resolved to MSAs on-chain
+ * @returns {Promise<void>}
+ */
 async function resolveUsersFromChain(users: ChainUser[]): Promise<void> {
   const addresses = users.map((u) => u.keypair.address);
-  console.log(`Attempting to resolve existing MSAs for ${addresses.length} addresses...`);
+  process.stdout.write(`Attempting to resolve existing MSAs for ${addresses.length} addresses... `);
   const allMsas = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId.multi([...addresses]);
   addresses.forEach((_, index) => {
     if (!allMsas[index].isNone) {
@@ -47,12 +55,22 @@ async function resolveUsersFromChain(users: ChainUser[]): Promise<void> {
         }
       });
     }
-    console.log(`Resolved ${users.filter((u) => u?.msaId).length} existing user accounts on-chain`);
+    console.log(`resolved ${users.filter((u) => u?.msaId).length} existing user accounts on-chain`);
   }
 }
 
+/**
+ * Convenience method for initializing a set of MSAs to be used in test scenarios. The function
+ * will provision a keypair for each user, with all keypairs being derived from the same base seed
+ * phrase or URI. Then it will call `resolveUsersFromChain` to resolve the created keypairs to any
+ * already-existing MSAs.
+ *
+ * @param {string} baseSeed - Seed phrase/uri to use as a derivation base for the keypair
+ * @param {number} numUsers - number of users to create
+ * @returns {Promise<ChainUser[]>} An array of initialize users
+ */
 export async function initializeLocalUsers(baseSeed: string, numUsers: number): Promise<ChainUser[]> {
-  process.stdout.write(`Creating keypairs for ${numUsers} accounts...`);
+  process.stdout.write(`Creating keypairs for ${numUsers} accounts... `);
   const users = new Array(numUsers).fill(0).map((_, i) => {
     const uri = `${baseSeed}//${i}`;
     return { uri, keypair: keyring.createFromUri(uri) };
@@ -63,11 +81,26 @@ export async function initializeLocalUsers(baseSeed: string, numUsers: number): 
   return users;
 }
 
+/**
+ * Convenience method to get current block number.
+ *
+ * @returns {Promise<number>} Current block number
+ */
 async function getCurrentBlockNumber(): Promise<number> {
   const block = await ExtrinsicHelper.apiPromise.rpc.chain.getBlock();
   return block.block.header.number.toNumber();
 }
 
+/**
+ * Create a signed payload to be used with either of the following extrinsics:
+ *     - createSponsoredAccountWithDelegations
+ *     - grantDelegation
+ * @param {ChainUser} user - ChainUser object containing the keys to be used in signing the payload
+ * @param {ChainUser} provider - ChainUser object containing the Provider ID to be authorized in the delegation
+ * @param {number} currentBlockNumber - current block number to be used in determining expiration of the payload signature
+ * @param {AnyNumber[]} schemaIds - Array of Schema IDs to be included in the Provider delegation
+ * @returns {{ payload: PalletMsaAddProvider, proof: Sr25519Signature }}
+ */
 function getAddProviderPayload(user: ChainUser, provider: ChainUser, currentBlockNumber: number, schemaIds: AnyNumber[]): { payload: AddProviderPayload; proof: Sr25519Signature } {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const addProvider: AddProviderPayload = {
@@ -81,6 +114,14 @@ function getAddProviderPayload(user: ChainUser, provider: ChainUser, currentBloc
   return { payload: addProvider, proof };
 }
 
+/**
+ * Generate a signed payload to be used with the `claimHandle` or `changeHandle` extrinsics.
+ *
+ * @param {ChainUser} user object containing keypair to be used in signing the payload
+ * @param {string} handle Base handle to be claimed
+ * @param {number} currentBlockNumber Current block number used to calculate expiration of the payload signature
+ * @returns {{ payload, proof: Sr25519Signature }}
+ */
 function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number) {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const handleBytes = new Bytes(ExtrinsicHelper.apiPromise.registry, handle);
@@ -94,6 +135,15 @@ function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumb
   return { payload, proof };
 }
 
+/**
+ * For each ChainUser in the input array that does not have an MSA ID provisioned, create an extrinsic call to
+ * `createSponsoredAccountWithDelegation`, and, optionally, `claimHandle`.
+ *
+ * @param {ChainUser} provider User object representing the Provider to be delegated to
+ * @param {ChainUser[]} users Array of users to be provisioned
+ * @param {{ schemaIds, allocateHandle }} options Record of options to the function
+ * @returns {Promise<void>}
+ */
 export async function provisionLocalUserCreationExtrinsics(
   provider: ChainUser,
   users: ChainUser[],
@@ -116,7 +166,16 @@ export async function provisionLocalUserCreationExtrinsics(
     });
 }
 
-export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumber[]) {
+/**
+ * Method to provision extrinsics to delete existing user graphs.
+ * For each user in the input, determine if any populated graph pages exist for the given schema IDs, and for
+ * each detected graph page, create an extrinsic call to `deletePage`
+ *
+ * @param {ChainUser} users Array of users to have their graphs deleted
+ * @param {AnyNumber[]} [schemaIds] Array of schemaIds for graphs to be cleared. (Defaut: DEFAULT_GRAPH_SCHEMAS)
+ * @returns {Promise<void[]>}
+ */
+export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumber[]): Promise<void[]> {
   return Promise.all(
     users.map(async (user) => {
       if (!user?.msaId) {
@@ -141,7 +200,17 @@ export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumb
   );
 }
 
-export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWellKnownKey = true) {
+/**
+ * Provision graph encryption keys for users.
+ *
+ * For each user in the input, fetch the latest public graph key and compare to the key to be provisioned. If they match, do nothing,
+ * otherwise, provision a new graph encryption keypair.
+ *
+ * @param {ChainUser[]} users Users to have graph keys provisioned
+ * @param {boolean} useWellKnownKey=true If true and no key is indicated in the input use, use the `wellKnownGraphKeypair`
+ * @returns {Promise<void[]>}
+ */
+export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWellKnownKey = true): Promise<void[]> {
   const currentBlockNumber = await getCurrentBlockNumber();
   return Promise.all(
     users.map(async (user) => {
@@ -169,8 +238,17 @@ export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWe
   );
 }
 
-export async function provisionUsersOnChain(payorKeys: KeyringPair, users: ChainUser[], eventHandlers: ChainEventHandler[]) {
+/**
+ * Execute previously-provisioned extrinsic call for an array of users on-chain, and await their completion.
+ *
+ * @param {KeyringPair} payorKeys - Signing keys for the account that will be submitting the transactions.
+ * @param {ChainUser[]} users - Array of users to be provisioned on-chain
+ * @param {ChainEventHandler[]} eventHandlers - Array of methods to be invoked in the chain event subscription handler
+ * @returns {Promise<void>}
+ */
+export async function provisionUsersOnChain(payorKeys: KeyringPair, users: ChainUser[], eventHandlers: ChainEventHandler[]): Promise<void> {
   let usersToCreate = 0;
+  let handlesToClaim = 0;
   let graphUpdates = 0;
   let graphKeys = 0;
 
@@ -183,6 +261,7 @@ export async function provisionUsersOnChain(payorKeys: KeyringPair, users: Chain
     }
     if (user?.claimHandle) {
       extrinsics.push(user.claimHandle());
+      handlesToClaim++;
     }
     if (user?.addGraphKey) {
       extrinsics.push(user.addGraphKey());
@@ -196,6 +275,7 @@ export async function provisionUsersOnChain(payorKeys: KeyringPair, users: Chain
 
   console.log(`
 MSAs to create: ${usersToCreate}
+Handles to claim: ${handlesToClaim}
 Graph keys to provision: ${graphKeys}
 User graphs to clear: ${graphUpdates}
 `);
