@@ -42,7 +42,8 @@
     "avsc": "^5.7.7",
     "loglevel": "^1.9.1",
     "minimist": "^1.2.8",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "unique-names-generator": "^4.7.1"
   },
   "devDependencies": {
     "@polkadot/typegen": "^11.2.1",
@@ -60,7 +61,6 @@
     "eslint-plugin-promise": "^6.2.0",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.12.0",
-    "typescript": "^5.4.5",
-    "unique-names-generator": "^4.7.1"
+    "typescript": "^5.4.5"
   }
 }
