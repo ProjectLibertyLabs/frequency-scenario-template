@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { Type as AvroType, Schema as AvroSchema } from 'avsc';
+import avsc from 'avsc';
 
 export type ModelTypeStr = 'AvroBinary' | 'Parquet';
 export type PayloadLocationStr = 'OnChain' | 'Ipfs' | 'Itemized' | 'Paginated';
@@ -28,7 +28,7 @@ export class Schema implements ISchema {
 
   private readonly _name: string | undefined;
 
-  private _codec: AvroType | undefined; // TODO: add ParquetJS support
+  private _codec: avsc.Type | undefined; // TODO: add ParquetJS support
 
   constructor(source: ISchema) {
     this._model = source.model;
@@ -39,7 +39,7 @@ export class Schema implements ISchema {
     this._name = source?.name;
 
     if (this.modelType === 'AvroBinary') {
-      const avroModel: AvroSchema = (() => {
+      const avroModel: avsc.Schema = (() => {
         if (this.model?.toHuman) {
           return JSON.parse(this.model.toHuman());
         }
@@ -51,7 +51,7 @@ export class Schema implements ISchema {
         return this.model;
       })();
 
-      this._codec = AvroType.forSchema(avroModel);
+      this._codec = avsc.Type.forSchema(avroModel);
     }
   }
 
