@@ -358,14 +358,14 @@ export class ExtrinsicHelper {
     model: any,
     modelType: ModelTypeStr,
     payloadLocation: PayloadLocationStr,
-    grant: SchemaSettingStr,
+    schemaSettings: SchemaSettingStr[],
     name?: string,
   ): Extrinsic {
     // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
     // We'll just force to an actual PayloadLocation to resolve.
     const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, [grant], name || null),
+      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, schemaSettings, name || null),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );
