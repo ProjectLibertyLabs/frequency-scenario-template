@@ -86,7 +86,7 @@ export async function initializeLocalUsers(baseSeed: string, numUsers: number): 
  *
  * @returns {Promise<number>} Current block number
  */
-async function getCurrentBlockNumber(): Promise<number> {
+export async function getCurrentBlockNumber(): Promise<number> {
   const block = await ExtrinsicHelper.apiPromise.rpc.chain.getBlock();
   return block.block.header.number.toNumber();
 }
@@ -101,7 +101,12 @@ async function getCurrentBlockNumber(): Promise<number> {
  * @param {AnyNumber[]} schemaIds - Array of Schema IDs to be included in the Provider delegation
  * @returns {{ payload: PalletMsaAddProvider, proof: Sr25519Signature }}
  */
-function getAddProviderPayload(user: ChainUser, provider: ChainUser, currentBlockNumber: number, schemaIds: AnyNumber[]): { payload: AddProviderPayload; proof: Sr25519Signature } {
+export function getAddProviderPayload(
+  user: ChainUser,
+  provider: ChainUser,
+  currentBlockNumber: number,
+  schemaIds: AnyNumber[],
+): { payload: AddProviderPayload; proof: Sr25519Signature } {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const addProvider: AddProviderPayload = {
     authorizedMsaId: provider.msaId,
@@ -122,7 +127,7 @@ function getAddProviderPayload(user: ChainUser, provider: ChainUser, currentBloc
  * @param {number} currentBlockNumber Current block number used to calculate expiration of the payload signature
  * @returns {{ payload, proof: Sr25519Signature }}
  */
-function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number) {
+export function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number) {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const handleBytes = new Bytes(ExtrinsicHelper.apiPromise.registry, handle);
   const payload = {
