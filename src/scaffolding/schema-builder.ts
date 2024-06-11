@@ -1,7 +1,7 @@
+import '@frequency-chain/api-augment';
 import { SchemaId, SchemaResponse, SchemaVersionResponse } from '@frequency-chain/api-augment/interfaces';
 import { AnyNumber } from '@polkadot/types/types';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { firstValueFrom } from 'rxjs';
 import { ModelTypeStr, PayloadLocationStr, Schema, SchemaSettingStr } from './schema';
 import { ExtrinsicHelper } from './extrinsicHelpers';
 import { devAccounts } from './helpers';
@@ -26,6 +26,10 @@ export class SchemaBuilder {
     if (values !== undefined) {
       Object.assign(this.values, values);
     }
+  }
+
+  public withNamedVersion(name: string, version?: number): SchemaBuilder {
+    return new SchemaBuilder({ ...this.values, name, version });
   }
 
   public withModel(model: {}): SchemaBuilder {
@@ -84,10 +88,6 @@ export class SchemaBuilder {
   public async resolve(): Promise<Schema | undefined> {
     // If no id, we're creating a new schema on-chain
     if (this.values.id === undefined && this.values.autodetectExisting) {
-      if ([this.values.model, this.values.modelType, this.values.payloadLocation].some((attr) => attr === undefined)) {
-        throw new Error('Missing attribute(s) for schema creation');
-      }
-
       // Try to auto-detect ID of existing schema
       if (this.values.name) {
         const schemaNameResponse = await ExtrinsicHelper.apiPromise.rpc.schemas.getVersions(this.values.name);
@@ -110,9 +110,21 @@ export class SchemaBuilder {
 
           if (schemaId) {
             const schema = await SchemaBuilder.fetchAndCacheSchema(schemaId);
-            return new Schema(schema.schema_id, schema.model, schema.model_type.type, schema.payload_location.type, []);
+            return new Schema({
+              id: schema.schema_id,
+              name: this.values.name,
+              model: schema.model,
+              modelType: schema.model_type.type,
+              payloadLocation: schema.payload_location.type,
+              settings: [],
+            });
           }
         }
+      }
+
+      // No name (or name not found), we'll need to use the model to try and look up an existing schema
+      if ([this.values.model, this.values.modelType, this.values.payloadLocation].some((attr) => attr === undefined)) {
+        throw new Error('Missing attribute(s) for schema creation');
       }
 
       const maxSchemas = (await ExtrinsicHelper.apiPromise.query.schemas.currentSchemaIdentifierMaximum()).toNumber();
@@ -127,7 +139,7 @@ export class SchemaBuilder {
         }
 
         if (this.schemaMatches(schema)) {
-          return new Schema(schema.schema_id, schema.model, schema.model_type.type, schema.payload_location.type, []);
+          return new Schema({ id: schema.schema_id, model: schema.model, modelType: schema.model_type.type, payloadLocation: schema.payload_location.type, settings: [] });
         }
       }
 
@@ -140,13 +152,13 @@ export class SchemaBuilder {
       throw new Error(`No schema with id ${this.values.id}`);
     }
     const schema: SchemaResponse = response.unwrap();
-    return new Schema(
-      schema.schema_id,
-      schema.model,
-      schema.model_type.type,
-      schema.payload_location.type,
-      schema.settings.toArray().map((setting) => setting.type),
-    );
+    return new Schema({
+      id: schema.schema_id,
+      model: schema.model,
+      modelType: schema.model_type.type,
+      payloadLocation: schema.payload_location.type,
+      settings: schema.settings.toArray().map((setting) => setting.type),
+    });
   }
 
   public async build(creatorKeys: KeyringPair): Promise<Schema> {
@@ -178,6 +190,12 @@ export class SchemaBuilder {
       throw new Error('Schema not created');
     }
 
-    return new Schema(event.data.schemaId, this.values.model!, this.values.modelType!, this.values.payloadLocation!, this.values.settings ? this.values.settings : []);
+    return new Schema({
+      id: event.data.schemaId,
+      model: this.values.model!,
+      modelType: this.values.modelType!,
+      payloadLocation: this.values.payloadLocation!,
+      settings: this.values.settings ? this.values.settings : [],
+    });
   }
 }
