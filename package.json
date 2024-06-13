@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "prepare": "npm run build",
-    "build": "rm -fr dist/* && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && ./scripts/fixup",
+    "build": "rm -fr dist/* && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json && node scripts/package.cjs",
     "lint": "tsc --noEmit --pretty && eslint \"**/*.ts\" --fix",
     "lint:fix": "eslint \"**/*.ts\" --fix",
     "pack": "cd dist && npm pack",

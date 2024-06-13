@@ -24,7 +24,20 @@ delete rootPackage['devDependencies'];
 
 // Setup the main and types correctly
 rootPackage['types'] = 'index.d.ts';
+const cjsPackage = {
+  type: 'commonjs',
+};
+const mjsPackage = {
+  type: 'module',
+};
+
 // Write it out
 fs.writeFileSync(`${path.join(__dirname, '../dist', 'package.json')}`, JSON.stringify(rootPackage, null, 2), (err) => {
+  if (err) throw new Error(err);
+});
+fs.writeFileSync(`${path.join(__dirname, '../dist/cjs', 'package.json')}`, JSON.stringify(cjsPackage, null, 2), (err) => {
+  if (err) throw new Error(err);
+});
+fs.writeFileSync(`${path.join(__dirname, '../dist/mjs', 'package.json')}`, JSON.stringify(mjsPackage, null, 2), (err) => {
   if (err) throw new Error(err);
 });
