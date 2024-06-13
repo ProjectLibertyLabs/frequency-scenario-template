@@ -1,6 +1,9 @@
 /**
  * Build the package.json for the actual publishing
  */
+
+const removeDist = (s) => s.replace('dist/', '');
+
 // eslint-disable-next-line
 const fs = require('fs');
 // eslint-disable-next-line
@@ -23,7 +26,13 @@ delete rootPackage['files'];
 delete rootPackage['devDependencies'];
 
 // Setup the main and types correctly
-rootPackage['types'] = 'index.d.ts';
+rootPackage['main'] = removeDist(rootPackage['main']);
+rootPackage['module'] = removeDist(rootPackage['module']);
+rootPackage['types'] = removeDist(rootPackage['types']);
+const rootExports = rootPackage['exports']['.'];
+rootExports['import'] = removeDist(rootExports['import']);
+rootExports['require'] = removeDist(rootExports['require']);
+
 const cjsPackage = {
   type: 'commonjs',
 };
