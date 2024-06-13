@@ -127,7 +127,7 @@ export function getAddProviderPayload(
  * @param {number} currentBlockNumber Current block number used to calculate expiration of the payload signature
  * @returns {{ payload, proof: Sr25519Signature }}
  */
-export function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number) {
+export function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number): { payload: any; proof: Sr25519Signature } {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const handleBytes = new Bytes(ExtrinsicHelper.apiPromise.registry, handle);
   const payload = {

@@ -23,16 +23,8 @@ delete rootPackage['files'];
 delete rootPackage['devDependencies'];
 
 // Setup the main and types correctly
-rootPackage['module'] = 'index.js';
 rootPackage['types'] = 'index.d.ts';
-(rootPackage['exports'] = {
-  '.': {
-    types: './index.d.ts',
-    import: './index.js',
-    default: './index.js',
-  },
-}),
-  // Write it out
-  fs.writeFileSync(`${path.join(__dirname, '../dist', 'package.json')}`, JSON.stringify(rootPackage, null, 2), (err) => {
-    if (err) throw new Error(err);
-  });
+// Write it out
+fs.writeFileSync(`${path.join(__dirname, '../dist', 'package.json')}`, JSON.stringify(rootPackage, null, 2), (err) => {
+  if (err) throw new Error(err);
+});
