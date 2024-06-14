@@ -141,9 +141,12 @@ export class UserBuilder {
       try {
         log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount > EXISTENTIAL_DEPOSIT ? fundingAmount : 'existential deposit'}`);
         await ExtrinsicHelper.transferFunds(fundingSource, this.defaultKeypair, fundingAmount).signAndSend();
-      } catch (e) {
-        throw new Error(`Unable to transfer initial token amount ${fundingAmount.toString()}:
-            ${JSON.stringify(e)}`);
+      } catch (e: any) {
+        throw new Error(
+          `Unable to transfer initial token amount ${fundingAmount.toString()}:
+            ${e?.toString() || e?.message || JSON.stringify(e)}`,
+          { cause: e },
+        );
       }
     }
 
