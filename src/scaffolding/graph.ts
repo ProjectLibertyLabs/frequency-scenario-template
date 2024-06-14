@@ -38,20 +38,21 @@ export async function fetchPublicKeySchema(): Promise<void> {
   publicGraphKeySchema = schema;
 }
 
-export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<HexString | undefined> {
+export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexString | undefined, number]> {
   await fetchPublicKeySchema();
   const itemizedPageResponse: ItemizedStoragePageResponse = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msaId, publicGraphKeySchema?.id);
   const currentKeyPayload = itemizedPageResponse.items.pop();
   if (!currentKeyPayload) {
-    return undefined;
+    return [undefined, itemizedPageResponse.content_hash.toNumber()];
   }
   const { publicKey } = publicGraphKeySchema.fromBuffer(Buffer.from(hexToU8a(currentKeyPayload.payload.toHex())));
-  return u8aToHex(publicKey);
+  return [u8aToHex(publicKey), itemizedPageResponse.content_hash.toNumber()];
 }
 
 export async function getAddGraphKeyPayload(
   publicKey: HexString,
   signingKeys: KeyringPair,
+  targetHash: number,
   currentBlock?: number,
 ): Promise<{ payload: ItemizedSignaturePayload; proof: Sr25519Signature }> {
   const keyString = publicKey.replace(/^0x/, '');
@@ -71,8 +72,8 @@ export async function getAddGraphKeyPayload(
   ];
 
   const graphKeyAction: any = {
-    targetHash: 0,
-    schemaId: 7,
+    targetHash,
+    schemaId: publicGraphKeySchema.id,
     actions: addAction,
   };
   const currentBlockNumber = currentBlock || (await ExtrinsicHelper.apiPromise.rpc.chain.getBlock()).block.header.number.toNumber();

@@ -3,7 +3,7 @@
 import Keyring from '@polkadot/keyring';
 import { AnyNumber } from '@polkadot/types/types';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { uniqueNamesGenerator, names, colors } from 'unique-names-generator';
+import { uniqueNamesGenerator, names, colors, NumberDictionary } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
 import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
 import { GraphKeyType } from '@dsnp/graph-sdk';
@@ -25,6 +25,7 @@ const wellKnownGraphKeypair = {
   privateKey: '0x1c15b6d1af4716615a4eb83a2dfba3284e1c0a199603572e7b95c164f7ad90e3',
 };
 const decoder = new StringDecoder('utf-8');
+const numberDictionary = NumberDictionary.generate({ min: 1000, max: 999999 });
 
 /**
  * Given an array of ChainUser, for each user that does not have an `msaId` populated,
@@ -164,7 +165,7 @@ export async function provisionLocalUserCreationExtrinsics(
       u.create = () => ExtrinsicHelper.apiPromise.tx.msa.createSponsoredAccountWithDelegation(u.keypair.publicKey, proof, addProviderPayload);
 
       if (allocateHandle) {
-        const name = uniqueNamesGenerator({ dictionaries: [colors, names], separator: '', length: 2, style: 'capital' });
+        const name = uniqueNamesGenerator({ dictionaries: [colors, names, numberDictionary], separator: '', length: 3, style: 'capital' });
         const { payload: handlePayload, proof: handleProof } = getClaimHandlePayload(u, name, currentBlock);
         u.claimHandle = () => ExtrinsicHelper.apiPromise.tx.handles.claimHandle(u.keypair.publicKey, handleProof, handlePayload);
       }
@@ -215,11 +216,11 @@ export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumb
  * @param {boolean} useWellKnownKey=true If true and no key is indicated in the input use, use the `wellKnownGraphKeypair`
  * @returns {Promise<void[]>}
  */
-export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWellKnownKey = true): Promise<void[]> {
+export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWellKnownKey: boolean = true): Promise<void[]> {
   const currentBlockNumber = await getCurrentBlockNumber();
   return Promise.all(
     users.map(async (user) => {
-      const currentPubKey = await getCurrentPublicGraphKey(user.msaId!);
+      const [currentPubKey, targetHash] = await getCurrentPublicGraphKey(user.msaId!);
       if (user?.graphKeyPair && currentPubKey === u8aToHex(user.graphKeyPair.publicKey)) {
         return;
       }
@@ -235,7 +236,12 @@ export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWe
           return;
         }
 
-        const { payload: addGraphKeyPayload, proof: addGraphKeyProof } = await getAddGraphKeyPayload(u8aToHex(user.graphKeyPair.publicKey), user.keypair, currentBlockNumber);
+        const { payload: addGraphKeyPayload, proof: addGraphKeyProof } = await getAddGraphKeyPayload(
+          u8aToHex(user.graphKeyPair.publicKey),
+          user.keypair,
+          targetHash,
+          currentBlockNumber,
+        );
 
         user.addGraphKey = () => ExtrinsicHelper.apiPromise.tx.statefulStorage.applyItemActionsWithSignatureV2(user.keypair.publicKey, addGraphKeyProof, addGraphKeyPayload);
       }
