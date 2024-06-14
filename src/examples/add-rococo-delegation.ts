@@ -14,7 +14,7 @@
 import minimist from 'minimist';
 import { Keyring } from '@polkadot/api';
 import { compactStripLength, u8aToHex } from '@polkadot/util';
-import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers';
+import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers.js';
 
 const WEBSOCKET_URL = 'wss://rpc.rococo.frequency.xyz'; // Rococo
 

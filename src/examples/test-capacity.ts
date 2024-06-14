@@ -3,9 +3,9 @@
  * and do a basic chain operation.
  */
 
-import { UserBuilder } from '#app/scaffolding/user-builder';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { devAccounts, initialize, stakeToProvider } from '../scaffolding/helpers';
+import { UserBuilder } from '#app/scaffolding/user-builder.js';
+import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { devAccounts, initialize, stakeToProvider } from '../scaffolding/helpers.js';
 
 async function main() {
   // Connect to chain & initialize API

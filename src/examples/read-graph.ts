@@ -25,9 +25,9 @@ import log from 'loglevel';
 import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a } from '@polkadot/util';
 import minimist from 'minimist';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { initialize, devAccounts } from '../scaffolding/helpers';
-import { SchemaBuilder } from '../scaffolding/schema-builder';
+import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { initialize, devAccounts } from '../scaffolding/helpers.js';
+import { SchemaBuilder } from '../scaffolding/schema-builder.js';
 
 function getDevTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;

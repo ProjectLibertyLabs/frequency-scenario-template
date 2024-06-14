@@ -5,11 +5,11 @@
  */
 /* eslint-disable new-cap */
 import minimist from 'minimist';
-import { AddProviderPayload, ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers';
-import { initialize, devAccounts, Sr25519Signature } from '#app/scaffolding/helpers';
-import { UserBuilder } from '#app/scaffolding/user-builder';
 import { Keyring } from '@polkadot/api';
 import { Bytes, u64 } from '@polkadot/types';
+import { AddProviderPayload, ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers.js';
+import { initialize, devAccounts, Sr25519Signature } from '#app/scaffolding/helpers.js';
+import { UserBuilder } from '#app/scaffolding/user-builder.js';
 
 async function main() {
   // Connect to chain & initialize API

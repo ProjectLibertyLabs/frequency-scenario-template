@@ -1,7 +1,7 @@
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
-import { ExtrinsicHelper, User, UserBuilder } from '../scaffolding';
-import { ChainUser } from './types';
+import { ExtrinsicHelper, UserBuilder } from '../scaffolding/index.js';
+import { ChainUser } from './types.js';
 
 /**
  * Description: Create a new MSA and register as a provider.

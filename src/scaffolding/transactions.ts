@@ -4,7 +4,7 @@ import { AugmentedSubmittable, SubmittableExtrinsic, VoidFn } from '@polkadot/ap
 import { IMethod, ISubmittableResult } from '@polkadot/types/types';
 import { Call } from '@polkadot/types/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { EventError, ExtrinsicHelper } from './extrinsicHelpers';
+import { EventError, ExtrinsicHelper } from './extrinsicHelpers.js';
 
 export type ChainEventHandler = (events: Vec<FrameSystemEventRecord>) => void;
 

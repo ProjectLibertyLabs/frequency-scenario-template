@@ -11,16 +11,6 @@
   },
   "ignorePatterns": ["/dist/**"],
   "settings": {
-    "import/extensions": [
-      "error",
-      "ignorePackages",
-      {
-        "js": "never",
-        "jsx": "never",
-        "ts": "never",
-        "tsx": "never"
-      }
-    ],
     "import/parsers": {
       "@typescript-eslint/parser": [".ts", ".tsx"]
     },
@@ -31,9 +21,6 @@
       "node": {
         "extensions": [".js", ".jsx", ".ts", ".d.ts", ".tsx"]
       }
-    },
-    "react": {
-      "version": "999.99.99"
     }
   },
   "rules": {

@@ -9,11 +9,11 @@ import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
 import { GraphKeyType } from '@dsnp/graph-sdk';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { StringDecoder } from 'string_decoder';
-import { ChainEventHandler, batchWithCapacityAndWaitForExtrinsics } from '../scaffolding/transactions';
-import { getAddGraphKeyPayload, getCurrentPublicGraphKey } from '../scaffolding/graph';
-import { AddProviderPayload, ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { Sr25519Signature, signPayloadSr25519 } from '../scaffolding/helpers';
-import { ChainUser } from './types';
+import { ChainEventHandler, batchWithCapacityAndWaitForExtrinsics } from '../scaffolding/transactions.js';
+import { getAddGraphKeyPayload, getCurrentPublicGraphKey } from '../scaffolding/graph.js';
+import { AddProviderPayload, ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { Sr25519Signature, signPayloadSr25519 } from '../scaffolding/helpers.js';
+import { ChainUser } from './types.js';
 
 const DEFAULT_GRAPH_SCHEMAS = [8, 9, 10];
 const DEFAULT_GRAPH_KEY_SCHEMA = 7;
@@ -127,7 +127,7 @@ export function getAddProviderPayload(
  * @param {number} currentBlockNumber Current block number used to calculate expiration of the payload signature
  * @returns {{ payload, proof: Sr25519Signature }}
  */
-export function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number) {
+export function getClaimHandlePayload(user: ChainUser, handle: string, currentBlockNumber: number): { payload: any; proof: Sr25519Signature } {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const handleBytes = new Bytes(ExtrinsicHelper.apiPromise.registry, handle);
   const payload = {

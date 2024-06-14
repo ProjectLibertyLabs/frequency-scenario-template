@@ -24,14 +24,14 @@ import {
 } from '@dsnp/graph-sdk';
 import log from 'loglevel';
 import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { User } from '#app/scaffolding/user';
 import { hexToU8a } from '@polkadot/util';
 import { Option } from '@polkadot/types';
 import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { initialize, devAccounts } from '../scaffolding/helpers';
+import { User } from '#app/scaffolding/user.js';
+import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { initialize, devAccounts } from '../scaffolding/helpers.js';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
-import { UserBuilder } from '../scaffolding/user-builder';
+import { UserBuilder } from '../scaffolding/user-builder.js';
 
 function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;

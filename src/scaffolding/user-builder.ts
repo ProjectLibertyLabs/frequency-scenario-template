@@ -2,10 +2,10 @@ import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfac
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import log from 'loglevel';
-import { IUser, User } from './user';
-import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
-import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers';
-import { apiCreateKeys } from './apiConnection';
+import { IUser, User } from './user.js';
+import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
+import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers.js';
+import { apiCreateKeys } from './apiConnection.js';
 
 interface IUserBuilder {
   keyUris?: string[];

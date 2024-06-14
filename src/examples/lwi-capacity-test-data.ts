@@ -5,10 +5,10 @@
  * and do a basic chain operation.
  */
 
-import { User } from '#app/scaffolding/user';
-import { UserBuilder } from '#app/scaffolding/user-builder';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { createKeys, devAccounts, getBlockNumber, initialize, stakeToProvider } from '../scaffolding/helpers';
+import { User } from '#app/scaffolding/user.js';
+import { UserBuilder } from '#app/scaffolding/user-builder.js';
+import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { createKeys, devAccounts, getBlockNumber, initialize, stakeToProvider } from '../scaffolding/helpers.js';
 
 const firstNames = [
   'Aaliyah',

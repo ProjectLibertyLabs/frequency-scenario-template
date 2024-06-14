@@ -6,8 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import { Bytes } from '@polkadot/types';
 import { u8aToHex } from '@polkadot/util/u8a/toHex';
 import { u8aWrapBytes } from '@polkadot/util';
-import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers';
-import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers';
+import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers.js';
+import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
 
 export interface IUser {
   handle?: string;

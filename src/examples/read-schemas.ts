@@ -1,6 +1,6 @@
-import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers';
-import { initialize } from '#app/scaffolding/helpers';
 import minimist from 'minimist';
+import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers.js';
+import { initialize } from '#app/scaffolding/helpers.js';
 
 async function main() {
   // Extract any CLI arguments

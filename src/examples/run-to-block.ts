@@ -5,8 +5,8 @@
 
 import minimist from 'minimist';
 import log from 'loglevel';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers';
-import { initialize } from '../scaffolding/helpers';
+import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
+import { initialize } from '../scaffolding/helpers.js';
 
 async function main() {
   // Connect to chain & initialize API
