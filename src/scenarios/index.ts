@@ -1,3 +1,3 @@
-export * from './provision-msas';
-export * from './provision-provider';
-export * from './types';
+export * from './provision-msas.js';
+export * from './provision-provider.js';
+export * from './types.js';

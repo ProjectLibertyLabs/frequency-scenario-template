@@ -22,10 +22,10 @@ import { isArray, u8aWrapBytes } from '@polkadot/util';
 import type { Call } from '@polkadot/types/interfaces/runtime';
 import { KeyringPair } from '@polkadot/keyring/types';
 import util from 'util';
-import { connect, connectPromise } from './apiConnection';
+import { connect, connectPromise } from './apiConnection.js';
 // eslint-disable-next-line import/no-cycle
-import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers';
-import { ModelTypeStr, PayloadLocationStr, SchemaSettingStr } from './schema';
+import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers.js';
+import { ModelTypeStr, PayloadLocationStr, SchemaSettingStr } from './schema.js';
 
 export type ReleaseSchedule = {
   start: number;
@@ -365,7 +365,8 @@ export class ExtrinsicHelper {
     // We'll just force to an actual PayloadLocation to resolve.
     const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, schemaSettings, name || null),
+      () =>
+        ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, schemaSettings, name || null),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );

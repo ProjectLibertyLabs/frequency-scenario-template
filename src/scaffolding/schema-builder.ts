@@ -2,9 +2,9 @@ import '@frequency-chain/api-augment';
 import { SchemaId, SchemaResponse, SchemaVersionResponse } from '@frequency-chain/api-augment/interfaces';
 import { AnyNumber } from '@polkadot/types/types';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { ModelTypeStr, PayloadLocationStr, Schema, SchemaSettingStr } from './schema';
-import { ExtrinsicHelper } from './extrinsicHelpers';
-import { devAccounts } from './helpers';
+import { ModelTypeStr, PayloadLocationStr, Schema, SchemaSettingStr } from './schema.js';
+import { ExtrinsicHelper } from './extrinsicHelpers.js';
+import { devAccounts } from './helpers.js';
 
 export interface ISchemaBuilder {
   id?: SchemaId | AnyNumber;

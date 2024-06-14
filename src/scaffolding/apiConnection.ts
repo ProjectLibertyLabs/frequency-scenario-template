@@ -2,7 +2,7 @@ import { options } from '@frequency-chain/api-augment';
 import { ApiRx, WsProvider, ApiPromise, Keyring, HttpProvider } from '@polkadot/api';
 import { firstValueFrom } from 'rxjs';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { env } from './env';
+import { env } from './env.js';
 
 // eslint-disable-next-line import/no-mutable-exports
 export let keyring: Keyring;

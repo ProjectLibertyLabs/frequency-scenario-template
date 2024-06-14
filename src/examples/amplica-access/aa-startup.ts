@@ -3,10 +3,10 @@
  * and makes her a MeWe provider. Finally, it stakes a large amount
  */
 
-import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers';
-import { initialize, devAccounts, stakeToProvider } from '#app/scaffolding/helpers';
-import { UserBuilder } from '#app/scaffolding/user-builder';
 import { deploy } from '@dsnp/frequency-schemas/cli/deploy';
+import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers.js';
+import { initialize, devAccounts, stakeToProvider } from '#app/scaffolding/helpers.js';
+import { UserBuilder } from '#app/scaffolding/user-builder.js';
 
 async function main() {
   // Connect to chain & initialize API

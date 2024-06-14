@@ -10,9 +10,9 @@ import { HandleResponse, MessageSourceId, PageHash } from '@frequency-chain/api-
 import assert from 'assert';
 import { firstValueFrom } from 'rxjs';
 import Keyring, { encodeAddress } from '@polkadot/keyring';
-import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers';
-import { env } from './env';
-import { apiCreateKeys } from './apiConnection';
+import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers.js';
+import { env } from './env.js';
+import { apiCreateKeys } from './apiConnection.js';
 
 export interface Account {
   uri: string;

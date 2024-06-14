@@ -4,10 +4,10 @@ import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a, u8aToHex } from '@polkadot/util';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { ExtrinsicHelper, ItemizedSignaturePayload } from './extrinsicHelpers';
-import { Schema } from './schema';
-import { SchemaBuilder } from './schema-builder';
-import { Sr25519Signature, signPayloadSr25519 } from './helpers';
+import { ExtrinsicHelper, ItemizedSignaturePayload } from './extrinsicHelpers.js';
+import { Schema } from './schema.js';
+import { SchemaBuilder } from './schema-builder.js';
+import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
 
 // let publicGraphKeyAvroType: AvroType;
 let publicGraphKeySchema: Schema;
