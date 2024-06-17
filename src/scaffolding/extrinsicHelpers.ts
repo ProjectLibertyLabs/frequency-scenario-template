@@ -78,7 +78,7 @@ export class EventError extends Error {
 
   section?: string = '';
 
-  rawError: DispatchError | SpRuntimeDispatchError;
+  rawError: DispatchError | SpRuntimeDispatchError | any;
 
   method?: string = '';
 
@@ -99,7 +99,7 @@ export class EventError extends Error {
       this.message = source.type;
       this.section = '';
     }
-    this.rawError = source;
+    this.rawError = source?.toHuman ? source.toHuman() : source;
   }
 
   public toString() {
