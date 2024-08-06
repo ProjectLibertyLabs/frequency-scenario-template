@@ -1,5 +1,5 @@
 /*
- * Takes in the signup-response from Amplica Access signup request flow.
+ * Takes in the signup-response from Frequency Access signup request flow.
  * Paste the signup-response into the singup-response.json file.
  * Do not include the "response" wrapper object found in the sms flow
  */
@@ -25,7 +25,7 @@ async function main() {
     console.error('No response parameter supplied for signup-response. Please include a json response to use.');
     return;
   }
-  const response = await import(`examples/amplica-access/${responseLocation}`);
+  const response = await import(`examples/frequency-access/${responseLocation}`);
   const keyring = new Keyring({ type: 'sr25519' });
   const userPublicKeyByteArray = keyring.decodeAddress(response.publicKey.encodedValue);
 
