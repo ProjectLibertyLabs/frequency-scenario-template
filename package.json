@@ -1,5 +1,5 @@
 {
-  "name": "@amplica-labs/frequency-scenario-template",
+  "name": "@projectlibertylabs/frequency-scenario-template",
   "version": "0.0.0",
   "description": "Scaffolding to enable streamlined scripting of local Frequency chain state for development",
   "main": "dist/cjs/index.js",
@@ -24,15 +24,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AmplicaLabs/frequency-scenario-template.git"
+    "url": "git+https://github.com/ProjectLibertyLabs/frequency-scenario-template.git"
   },
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/AmplicaLabs/frequency-scenario-template/issues"
+    "url": "https://github.com/ProjectLibertyLabs/frequency-scenario-template/issues"
   },
-  "homepage": "https://github.com/AmplicaLabs/frequency-scenario-template#readme",
+  "homepage": "https://github.com/ProjectLibertyLabs/frequency-scenario-template#readme",
   "dependencies": {
     "@dsnp/frequency-schemas": "^1.1.0",
     "@dsnp/graph-sdk": "^1.1.3",
