@@ -1,6 +1,6 @@
 /*
  * This program uses 'sudo' to add a delegation to a wallet that is controlled
- * by the Amplica Access custodial wallet.
+ * by the Frequency Access custodial wallet.
  *
  * Inputs required:
  * --providerMsaId: Provider MSA ID being delegated to

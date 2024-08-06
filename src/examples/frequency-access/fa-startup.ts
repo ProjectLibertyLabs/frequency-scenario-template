@@ -1,5 +1,5 @@
 /*
- * Setup code for Amplica Access testing. Creates an MSA for alice
+ * Setup code for Frequency Access testing. Creates an MSA for alice
  * and makes her a MeWe provider. Finally, it stakes a large amount
  */
 
