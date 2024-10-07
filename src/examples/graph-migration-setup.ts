@@ -3,6 +3,8 @@
  * and do a basic chain operation.
  */
 
+// Examples do not require all dependencies for examples
+// eslint-disable-next-line import/no-extraneous-dependencies
 import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
