@@ -4,7 +4,7 @@
  * and do a basic chain operation.
  */
 
-import { userPrivateConnections, userPrivateFollows, publicKey, userPublicFollows } from '@dsnp/frequency-schemas/dsnp';
+import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
   SchemaConfig,
@@ -59,18 +59,14 @@ async function main() {
 
   if (environmentType === EnvironmentType.Dev) {
     const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
-    const publicFollowSchema = await schemaBuilder
-      .withNamedVersion('dsnp.public-follows', 1)
-      .withModel({ ...userPublicFollows, doc: 'Public follow schema' })
-      .build(devAccounts[0].keys);
-    const privateFollowSchema = await schemaBuilder.withNamedVersion('dsnp.private-follows', 1).withModel(userPrivateFollows).build(devAccounts[0].keys);
-    const privateFriendSchema = await schemaBuilder.withNamedVersion('dsnp.private-connections', 1).withModel(userPrivateConnections).build(devAccounts[0].keys);
-    const publicKeySchema = await schemaBuilder
-      .withNamedVersion('dsnp.public-key-key-agreement', 1)
-      .withPayloadLocation('Itemized')
-      .withModel(publicKey)
-      .withSetting('AppendOnly')
-      .build(devAccounts[0].keys);
+    const userPublicFollows = descriptorForUserDataType(UserDataType.PublicFollows);
+    const publicFollowSchema = await schemaBuilder.withModel(userPublicFollows.avroSchema).build(devAccounts[0].keys);
+    const userPrivateFollows = descriptorForUserDataType(UserDataType.PrivateFollows);
+    const privateFollowSchema = await schemaBuilder.withModel(userPrivateFollows.avroSchema).build(devAccounts[0].keys);
+    const userPrivateConnections = descriptorForUserDataType(UserDataType.PrivateConnections);
+    const privateFriendSchema = await schemaBuilder.withModel(userPrivateConnections).build(devAccounts[0].keys);
+    const publicKey = descriptorForUserDataType(UserDataType.KeyAgreementPublicKeys);
+    const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).withSettings(['AppendOnly']).build(devAccounts[0].keys);
 
     const schemaMap: { [key: number]: SchemaConfig } = {};
     schemaMap[publicFollowSchema.id.toNumber()] = {
