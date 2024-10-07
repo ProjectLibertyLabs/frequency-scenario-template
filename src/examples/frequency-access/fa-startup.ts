@@ -3,7 +3,6 @@
  * and makes her a MeWe provider. Finally, it stakes a large amount
  */
 
-import { deploy } from '@dsnp/frequency-schemas/cli/deploy';
 import { ExtrinsicHelper } from '#app/scaffolding/extrinsicHelpers.js';
 import { initialize, devAccounts, stakeToProvider } from '#app/scaffolding/helpers.js';
 import { UserBuilder } from '#app/scaffolding/user-builder.js';
@@ -17,9 +16,6 @@ async function main() {
   // up from chain after this one is run
   const builder = new UserBuilder();
   const alice = await builder.withKeypair(devAccounts[0].keys).asProvider('MeWe').build();
-
-  // Deploy the schemas
-  await deploy();
 
   // Stake to provider alice
   await stakeToProvider(alice.keypair, alice.providerId!, 320000000n);
