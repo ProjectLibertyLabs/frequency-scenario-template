@@ -2,7 +2,7 @@ import { MessageSourceId } from '@frequency-chain/api-augment/interfaces';
 import { SubmittableExtrinsic } from '@polkadot/api/types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ISubmittableResult } from '@polkadot/types/types';
-import { GraphKeyPair } from '@dsnp/graph-sdk';
+import { GraphKeyPair } from '@projectlibertylabs/graph-sdk';
 
 export type ChainUser = {
   uri: string;

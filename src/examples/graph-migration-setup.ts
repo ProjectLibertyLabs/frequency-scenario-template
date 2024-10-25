@@ -23,7 +23,7 @@ import {
   AddGraphKeyAction,
   Action,
   AddKeyUpdate,
-} from '@dsnp/graph-sdk';
+} from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
 import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a } from '@polkadot/util';

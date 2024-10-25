@@ -6,7 +6,7 @@ import { AnyNumber } from '@polkadot/types/types';
 import { uniqueNamesGenerator, names, colors, NumberDictionary } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
 import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
-import { GraphKeyType } from '@dsnp/graph-sdk';
+import { GraphKeyType } from '@projectlibertylabs/graph-sdk';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { StringDecoder } from 'string_decoder';
 import { ChainEventHandler, batchWithCapacityAndWaitForExtrinsics } from '../scaffolding/transactions.js';

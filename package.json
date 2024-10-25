@@ -34,7 +34,7 @@
   },
   "homepage": "https://github.com/ProjectLibertyLabs/frequency-scenario-template#readme",
   "dependencies": {
-    "@dsnp/graph-sdk": "^1.1.4",
+    "@projectlibertylabs/graph-sdk": "^2.0.1",
     "@frequency-chain/api-augment": "1.13.2",
     "@polkadot/api": "^13.2.1",
     "@polkadot/keyring": "^13.1.1",
