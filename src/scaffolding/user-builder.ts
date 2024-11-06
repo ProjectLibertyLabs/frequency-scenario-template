@@ -203,7 +203,7 @@ export class UserBuilder {
       const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('CommonPrimitivesHandlesClaimHandlePayload', payload));
       const op =
         this.values.paymentMethod === 'provider'
-          ? ExtrinsicHelper.claimHandleWithProvider(this.defaultKeypair, this.values.delegation?.delegate.keypair!, signature, payload)
+          ? ExtrinsicHelper.claimHandleWithProvider(this.defaultKeypair, this.values.delegation!.delegate.keypair!, signature, payload)
           : ExtrinsicHelper.claimHandle(this.defaultKeypair, payload);
       const [result] = await (this.values.paymentMethod === 'provider' ? op.payWithCapacity() : op.fundAndSend());
       if (!ExtrinsicHelper.api.events.handles.HandleClaimed.is(result)) {

@@ -1,11 +1,9 @@
-/* eslint-disable no-await-in-loop */
 /*
  * Sample application showing how to initialize the environment
  * and do a basic chain operation.
  */
 
 // Examples do not require all dependencies for examples
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
@@ -31,7 +29,7 @@ import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
 import { initialize, devAccounts } from '../scaffolding/helpers.js';
 import { SchemaBuilder } from '../scaffolding/schema-builder.js';
 
-function getDevTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
+function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
   config.sdkMaxStaleFriendshipDays = 100;
   config.maxPageId = 100;
@@ -70,7 +68,7 @@ async function main() {
     const publicKey = descriptorForUserDataType(UserDataType.KeyAgreementPublicKeys);
     const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).withSettings(['AppendOnly']).build(devAccounts[0].keys);
 
-    const schemaMap: { [key: number]: SchemaConfig } = {};
+    const schemaMap: Record<number, SchemaConfig> = {};
     schemaMap[publicFollowSchema.id.toNumber()] = {
       dsnpVersion: DsnpVersion.Version1_0,
       connectionType: ConnectionType.Follow,
@@ -123,7 +121,6 @@ async function main() {
   };
   bundleBuilder = bundleBuilder.withDsnpKeys(dsnpKeys);
 
-  // eslint-disable-next-line guard-for-in,no-restricted-syntax
   for (const schemaId in schemaMap) {
     const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(msaId, schemaId);
     const pageArray: PaginatedStorageResponse[] = pages.toArray();
@@ -142,7 +139,7 @@ async function main() {
   log.info(`
   Graph for MSA ${msaId}:
   `);
-  // eslint-disable-next-line guard-for-in,no-restricted-syntax
+
   for (const schemaId in schemaMap) {
     const { connectionType, privacyType } = schemaMap[schemaId];
     const connections = graph.getConnectionsForUserGraph(msaId.toString(), parseInt(schemaId, 10), true);

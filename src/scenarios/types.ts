@@ -4,7 +4,7 @@ import { KeyringPair } from '@polkadot/keyring/types';
 import { ISubmittableResult } from '@polkadot/types/types';
 import { GraphKeyPair } from '@projectlibertylabs/graph-sdk';
 
-export type ChainUser = {
+export interface ChainUser {
   uri: string;
   keypair: KeyringPair;
   msaId?: MessageSourceId;
@@ -14,4 +14,4 @@ export type ChainUser = {
   claimHandle?: () => SubmittableExtrinsic<'promise', ISubmittableResult>;
   addGraphKey?: () => SubmittableExtrinsic<'promise', ISubmittableResult>;
   graphUpdates?: (() => SubmittableExtrinsic<'promise', ISubmittableResult>)[];
-};
+}

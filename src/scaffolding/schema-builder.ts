@@ -20,7 +20,7 @@ export interface ISchemaBuilder {
 export class SchemaBuilder {
   private values: ISchemaBuilder = {};
 
-  private static existingSchemaMap: Map<number, SchemaResponse> = new Map();
+  private static existingSchemaMap = new Map<number, SchemaResponse>();
 
   constructor(values?: ISchemaBuilder) {
     if (values !== undefined) {
@@ -32,7 +32,7 @@ export class SchemaBuilder {
     return new SchemaBuilder({ ...this.values, name, version });
   }
 
-  public withModel(model: {}): SchemaBuilder {
+  public withModel(model: object): SchemaBuilder {
     return new SchemaBuilder({ ...this.values, id: undefined, model });
   }
 
@@ -56,7 +56,6 @@ export class SchemaBuilder {
     return new SchemaBuilder({ ...this.values, id: undefined, version });
   }
 
-  // eslint-disable-next-line class-methods-use-this
   public withExistingSchemaId(id: SchemaId | AnyNumber): SchemaBuilder {
     return new SchemaBuilder({ id });
   }
@@ -70,7 +69,6 @@ export class SchemaBuilder {
       schema.model.toHuman() === JSON.stringify(this.values.model) &&
       schema.model_type.type === this.values.modelType &&
       schema.payload_location.type === this.values.payloadLocation &&
-      new Set(schema.settings.toArray().map((s) => s.toString())) === new Set(this.values.settings ? this.values.settings : []) &&
       JSON.stringify(schema.settings.toArray()) === JSON.stringify(this.values.settings ? [this.values.settings] : [])
     );
   }
@@ -94,7 +92,7 @@ export class SchemaBuilder {
         if (schemaNameResponse.isSome) {
           const schemaId = (() => {
             let latest: SchemaVersionResponse | undefined;
-            // eslint-disable-next-line no-restricted-syntax
+
             for (const val of schemaNameResponse.unwrap().toArray()) {
               if (this.values.version && val.schema_version.toNumber() === this.values.version) {
                 return val.schema_id.toNumber();
@@ -131,7 +129,6 @@ export class SchemaBuilder {
       for (let i = 1; i <= maxSchemas; i += 1) {
         let schema: SchemaResponse;
         if (!SchemaBuilder.existingSchemaMap.has(i)) {
-          // eslint-disable-next-line no-await-in-loop
           schema = (await ExtrinsicHelper.apiPromise.rpc.schemas.getBySchemaId(i)).unwrap();
           SchemaBuilder.existingSchemaMap.set(i, schema);
         } else {

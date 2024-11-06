@@ -1,5 +1,3 @@
-/* eslint-disable no-use-before-define */
-/* eslint-disable max-classes-per-file */
 import { ApiPromise, ApiRx } from '@polkadot/api';
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from '@polkadot/api/types';
 import { Compact, u128, u16, u32, u64, Vec, Option } from '@polkadot/types';
@@ -23,51 +21,54 @@ import type { Call } from '@polkadot/types/interfaces/runtime';
 import { KeyringPair } from '@polkadot/keyring/types';
 import util from 'util';
 import { connect, connectPromise } from './apiConnection.js';
-// eslint-disable-next-line import/no-cycle
 import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers.js';
 import { ModelTypeStr, PayloadLocationStr, SchemaSettingStr } from './schema.js';
 
-export type ReleaseSchedule = {
+export interface ReleaseSchedule {
   start: number;
   period: number;
   periodCount: number;
   perPeriod: bigint;
-};
+}
 
-export type AddKeyData = { msaId?: u64; expiration?: any; newPublicKey?: any };
-export type AddProviderPayload = {
+export interface AddKeyData {
+  msaId?: u64;
+  expiration?: any;
+  newPublicKey?: any;
+}
+export interface AddProviderPayload {
   authorizedMsaId?: MessageSourceId;
   schemaIds?: SchemaId[] | AnyNumber[];
   expiration?: any;
-};
-export type ItemizedSignaturePayload = {
+}
+export interface ItemizedSignaturePayload {
   msaId?: u64;
   schemaId?: u16;
   targetHash?: u32;
   expiration?: any;
   actions?: any;
-};
-export type ItemizedSignaturePayloadV2 = {
+}
+export interface ItemizedSignaturePayloadV2 {
   schemaId?: u16;
   targetHash?: u32;
   expiration?: any;
   actions?: any;
-};
-export type PaginatedUpsertSignaturePayload = {
+}
+export interface PaginatedUpsertSignaturePayload {
   msaId?: u64;
   schemaId?: u16;
   pageId?: u16;
   targetHash?: u32;
   expiration?: any;
   payload?: any;
-};
-export type PaginatedDeleteSignaturePayload = {
+}
+export interface PaginatedDeleteSignaturePayload {
   msaId?: u64;
   schemaId?: u16;
   pageId?: u16;
   targetHash?: u32;
   expiration?: any;
-};
+}
 
 export class EventError extends Error {
   name: string = '';
@@ -121,7 +122,7 @@ export class EventError extends Error {
   }
 }
 
-export type EventMap = { [key: string]: Event | Event[] };
+export type EventMap = Record<string, Event | Event[]>;
 
 function eventKey(event: Event): string {
   return `${event.section}.${event.method}`;
@@ -241,7 +242,6 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
     return this.signAndSend();
   }
 
-  // eslint-disable-next-line no-shadow
   private parseResult<ApiType extends ApiTypes = 'rxjs', T extends AnyTuple = AnyTuple, N = unknown>(targetEvent?: AugmentedEvent<ApiType, T, N>) {
     return pipe(
       tap((result: ISubmittableResult) => {
@@ -296,6 +296,7 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-extraneous-class
 export class ExtrinsicHelper {
   public static api: ApiRx;
 
@@ -585,9 +586,8 @@ export class ExtrinsicHelper {
   public static async run_to_block(blockNumber: number) {
     let currentBlock = await getBlockNumber();
     while (currentBlock < blockNumber) {
-      // eslint-disable-next-line no-await-in-loop
       await ExtrinsicHelper.mine();
-      // eslint-disable-next-line no-await-in-loop
+
       currentBlock = await getBlockNumber();
     }
   }

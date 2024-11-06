@@ -1,8 +1,5 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable no-param-reassign */
 import Keyring from '@polkadot/keyring';
 import { AnyNumber } from '@polkadot/types/types';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { uniqueNamesGenerator, names, colors, NumberDictionary } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
 import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
@@ -51,7 +48,6 @@ async function resolveUsersFromChain(users: ChainUser[]): Promise<void> {
     if (allHandles) {
       resolvedUsers.forEach((u, i) => {
         if (allHandles[i].isSome) {
-          // eslint-disable-next-line no-param-reassign
           u.handle = decoder.write(allHandles[i].unwrap()[0]);
         }
       });
@@ -161,7 +157,7 @@ export async function provisionLocalUserCreationExtrinsics(
     .filter((u) => !u?.msaId)
     .forEach((u) => {
       const { payload: addProviderPayload, proof } = getAddProviderPayload(u, provider, currentBlock, schemaIds ?? DEFAULT_SCHEMAS_TO_GRANT);
-      // eslint-disable-next-line no-param-reassign
+
       u.create = () => ExtrinsicHelper.apiPromise.tx.msa.createSponsoredAccountWithDelegation(u.keypair.publicKey, proof, addProviderPayload);
 
       if (allocateHandle) {
@@ -193,7 +189,6 @@ export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumb
         (schemaIds || DEFAULT_GRAPH_SCHEMAS).map(async (schemaId) => {
           const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
           if (!user?.graphUpdates) {
-            // eslint-disable-next-line no-param-reassign
             user.graphUpdates = [];
           }
 

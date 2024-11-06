@@ -1,5 +1,3 @@
-/* eslint-disable no-plusplus */
-/* eslint-disable no-await-in-loop */
 /*
  * Sample application showing how to initialize the environment
  * and do a basic chain operation.

@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import { SchemaId } from '@frequency-chain/api-augment/interfaces';
 import avsc from 'avsc';
 

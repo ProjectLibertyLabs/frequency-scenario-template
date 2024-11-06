@@ -1,4 +1,3 @@
-/* eslint-disable no-underscore-dangle */
 import { MessageSourceId, ProviderId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';

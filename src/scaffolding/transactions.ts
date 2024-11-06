@@ -61,7 +61,6 @@ async function batchAndWaitForExtrinsics(
       const xToPost = extrinsics.splice(0, maxBatch);
       batchesTracker.numPending += 1;
       try {
-        // eslint-disable-next-line no-await-in-loop, no-plusplus
         const unsub = await batchAll(xToPost).signAndSend(payorKeys, { nonce: nonce++ }, (x) => {
           const { status, events } = x;
           if (x.dispatchError) {
@@ -82,7 +81,6 @@ async function batchAndWaitForExtrinsics(
         throw new Error('Error submitting batch to the chain', { cause: err });
       }
     } else {
-      // eslint-disable-next-line no-await-in-loop
       await batchesTracker.promise;
       batchesTracker.promise = new Promise((resolve, reject) => {
         batchesTracker.resolve = resolve;

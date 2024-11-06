@@ -47,9 +47,8 @@ async function main() {
   `);
 
   // Verify delegations
-  // eslint-disable-next-line no-restricted-syntax
+
   for (const user of users) {
-    // eslint-disable-next-line no-await-in-loop
     const delegation = await ExtrinsicHelper.apiPromise.query.msa.delegatorAndProviderToDelegation(user.msaId, provider.msaId);
     if (delegation.isSome) {
       log.info(`User ${user.msaId.toString()} is delegated to provider ${provider.msaId.toString()}`);
