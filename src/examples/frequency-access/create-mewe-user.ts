@@ -3,7 +3,7 @@
  * Paste the signup-response into the singup-response.json file.
  * Do not include the "response" wrapper object found in the sms flow
  */
-/* eslint-disable new-cap */
+
 import minimist from 'minimist';
 import { Keyring } from '@polkadot/api';
 import { Bytes, u64 } from '@polkadot/types';

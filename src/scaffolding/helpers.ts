@@ -1,6 +1,3 @@
-/* eslint-disable import/no-cycle */
-/* eslint-disable no-use-before-define */
-/* eslint-disable new-cap */
 import { KeyringPair } from '@polkadot/keyring/types';
 import { u16, u32, u64, Option, u128, Bytes } from '@polkadot/types';
 import { Codec } from '@polkadot/types/types';
@@ -11,7 +8,7 @@ import assert from 'assert';
 import { firstValueFrom } from 'rxjs';
 import Keyring, { encodeAddress } from '@polkadot/keyring';
 import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers.js';
-import { env } from './env.js';
+import env from './env.js';
 import { apiCreateKeys } from './apiConnection.js';
 
 export interface Account {
@@ -21,7 +18,9 @@ export interface Account {
 
 export const devAccounts: Account[] = [];
 
-export type Sr25519Signature = { Sr25519: `0x${string}` };
+export interface Sr25519Signature {
+  Sr25519: `0x${string}`;
+}
 
 export const TEST_EPOCH_LENGTH = 10;
 export const CENTS = 1000000n;
@@ -32,7 +31,6 @@ export const CHAIN_ENVIRONMENT = {
   ROCOCO_LOCAL: 'rococo-local',
 };
 
-// eslint-disable-next-line import/no-mutable-exports
 export let EXISTENTIAL_DEPOSIT: bigint;
 
 export async function initialize(uri?: string): Promise<void> {
@@ -94,7 +92,7 @@ export async function generateClaimHandlePayload(name: string, expirationOffset 
 
 export async function generateAddKeyPayload(
   payloadInputs: AddKeyData,
-  // eslint-disable-next-line default-param-last
+
   expirationOffset: number = 100,
   blockNumber?: number,
 ): Promise<AddKeyData> {

@@ -12,15 +12,14 @@ async function main() {
   const entries = await ExtrinsicHelper.apiPromise.query.schemas.schemas.entries();
 
   entries
-    .filter(([_, entry]) => ['Paginated', 'Itemized'].some((pl) => pl === entry.unwrap().payloadLocation.toString()))
+    .filter(([_, entry]) => ['Paginated', 'Itemized'].some((pl) => pl === (entry as any).unwrap().payloadLocation.toString()))
     .forEach(([index, entry]) => {
-      const schema = entry.unwrap();
+      const schema = (entry as any).unwrap();
       console.log(`SchemaId: ${index.toHuman()}
     Model: ${schema.model.toHuman()}
     `);
     });
 }
 
-// eslint-disable-next-line no-return-await
 // main().finally(async () => await ExtrinsicHelper.disconnect());
 main().finally(async () => ExtrinsicHelper.disconnect());

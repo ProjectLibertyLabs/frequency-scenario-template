@@ -1,4 +1,3 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import { AnyNumber } from '@polkadot/types/types';
 import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
@@ -30,7 +29,7 @@ export async function fetchPublicKeySchema(): Promise<void> {
   const schema = await new SchemaBuilder()
     .withName('dsnp', 'public-key-key-agreement')
     .withModelType('AvroBinary')
-    .withModel('{type:record,name:PublicKey,namespace:org.dsnp,fields:[{name:publicKey,doc:Multicodec public key,type:bytes}]}')
+    .withModel({ type: 'record', name: 'PublicKey', namespace: 'org.dsnp', fields: [{ name: 'publicKey', doc: 'Multicodec public key', type: 'bytes' }] })
     .withPayloadLocation('Itemized')
     .withAutoDetectExistingSchema(true)
     .withSettings(['SignatureRequired', 'AppendOnly'])

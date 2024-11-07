@@ -4,7 +4,6 @@
  */
 
 // Examples do not require all dependencies for examples
-// eslint-disable-next-line import/no-extraneous-dependencies
 import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
@@ -35,7 +34,7 @@ import { initialize, devAccounts } from '../scaffolding/helpers.js';
 import { SchemaBuilder } from '../scaffolding/schema-builder';
 import { UserBuilder } from '../scaffolding/user-builder.js';
 
-function getTestConfig(schemaMap: { [key: number]: SchemaConfig }, keySchemaId: SchemaId): Config {
+function getTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: SchemaId): Config {
   const config: Config = {} as Config;
   config.sdkMaxStaleFriendshipDays = 100;
   config.maxPageId = 100;
@@ -123,7 +122,7 @@ async function main() {
   User (Eve) MSA ID: ${eve.msaId.toString()}
   `);
 
-  const schemaMap: { [key: number]: SchemaConfig } = {};
+  const schemaMap: Record<number, SchemaConfig> = {};
   schemaMap[publicFollowSchema.id.toNumber()] = {
     dsnpVersion: DsnpVersion.Version1_0,
     connectionType: ConnectionType.Follow,
@@ -147,29 +146,28 @@ async function main() {
   const schemaId = graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
 
   // Clear all users' graphs
-  // eslint-disable-next-line no-restricted-syntax
+
   for (const user of users) {
     log.info(`Clearing existing graph for MSA ${user.msaId.toString()}`);
     // Fetch user's public follow graph
-    // eslint-disable-next-line no-await-in-loop
+
     const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
 
     const pageArray: PaginatedStorageResponse[] = pages.toArray();
 
     // Remove the whole graph
     const removals = pageArray.map((page) => ExtrinsicHelper.removePage(user.keypair, 1, user.msaId, page.page_id, page.content_hash).fundAndSend());
-    // eslint-disable-next-line no-await-in-loop
+
     await Promise.all(removals);
   }
 
   // Install public key(s)
-  // eslint-disable-next-line no-restricted-syntax
+
   for (const user of users) {
-    // eslint-disable-next-line no-await-in-loop
     const itemizedPage: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeySchema.id);
     if (itemizedPage.items.length > 0) {
       log.info(`Found an existing public graph key for user ${user.msaId.toString()}; skipping key install`);
-      // eslint-disable-next-line no-continue
+
       continue;
     }
 
@@ -196,7 +194,7 @@ async function main() {
         ];
         return ExtrinsicHelper.applyItemActions(user.keypair, publicKeySchema.id, user.msaId, keyActions, 0).fundAndSend();
       });
-    // eslint-disable-next-line no-await-in-loop
+
     await Promise.all(promises);
   }
 

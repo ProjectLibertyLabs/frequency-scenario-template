@@ -54,4 +54,4 @@ jobs:
         run: npm i
 
       - name: Lint packages
-        run: npm run lint
+        run: npm run lint:ci
