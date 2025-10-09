@@ -6,6 +6,7 @@ import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers.js';
 import { apiCreateKeys } from './apiConnection.js';
+import {Bytes} from "@polkadot/types";
 
 interface IUserBuilder {
   keyUris?: string[];
@@ -242,7 +243,7 @@ export class UserBuilder {
       allKeys: this.values.allKeys!,
     };
 
-    const providerRegistryEntryOption = await ExtrinsicHelper.apiPromise.query.msa.providerToRegistryEntry(msaId);
+    const providerRegistryEntryOption = await ExtrinsicHelper.apiPromise.query.msa.providerToRegistryEntryV2(msaId);
     if (providerRegistryEntryOption.isNone) {
       if (this.values.providerName) {
         const op = ExtrinsicHelper.createProvider(this.defaultKeypair, this.values.providerName);
@@ -256,11 +257,11 @@ export class UserBuilder {
       }
     } else {
       userParams.providerId = msaId;
-      const { providerName } = providerRegistryEntryOption.unwrap();
-      if (providerName.toUtf8() !== this.values.providerName) {
-        log.warn(`Overriding requested Provider name ${this.values.providerName} with existing name ${providerName.toUtf8()}`);
+      const { defaultName } = providerRegistryEntryOption.unwrap();
+      if (defaultName.toUtf8() !== this.values.providerName) {
+        log.warn(`Overriding requested Provider name ${this.values.providerName} with existing name ${defaultName.toUtf8()}`);
       }
-      userParams.providerName = providerName.toUtf8();
+      userParams.providerName = defaultName.toUtf8();
       log.info(`Detected existing provider registration for MSA ${msaId.toString()} as '${userParams.providerName}'`);
     }
 

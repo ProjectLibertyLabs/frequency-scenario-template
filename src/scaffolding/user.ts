@@ -7,6 +7,7 @@ import { u8aToHex } from '@polkadot/util/u8a/toHex';
 import { u8aWrapBytes } from '@polkadot/util';
 import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
+import assert from "assert";
 
 export interface IUser {
   handle?: string;
@@ -81,7 +82,7 @@ export class User implements IUser {
   }
 
   public async registerAsProvider(name: string) {
-    const providerRegistryEntryOption = await firstValueFrom(ExtrinsicHelper.api.query.msa.providerToRegistryEntry(this.msaId));
+    const providerRegistryEntryOption = await firstValueFrom(ExtrinsicHelper.api.query.msa.providerToRegistryEntryV2(this.msaId));
     if (providerRegistryEntryOption.isNone) {
       const op = ExtrinsicHelper.createProvider(this.keypair, name);
       const [result] = await this.executeOp(op);
@@ -93,9 +94,9 @@ export class User implements IUser {
       this.providerId = providerId;
       this.providerName = name;
     } else {
-      const { providerName } = providerRegistryEntryOption.unwrap();
-      this.providerName = providerName.toString();
-      if (providerName.toString() !== name) {
+      const { defaultName } = providerRegistryEntryOption.unwrap();
+      this.providerName = defaultName.toString();
+      if (defaultName.toString() !== name) {
         console.log(`Overriding requested Provider name ${name} with existing name ${this.providerName}`);
       }
     }
