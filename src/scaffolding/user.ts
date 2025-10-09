@@ -7,7 +7,6 @@ import { u8aToHex } from '@polkadot/util/u8a/toHex';
 import { u8aWrapBytes } from '@polkadot/util';
 import { generateAddKeyPayload, generateDelegationPayload, signPayloadSr25519, getBlockNumber } from './helpers.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
-import assert from "assert";
 
 export interface IUser {
   handle?: string;
