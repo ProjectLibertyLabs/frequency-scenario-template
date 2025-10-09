@@ -6,7 +6,6 @@ import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
 import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers.js';
 import { apiCreateKeys } from './apiConnection.js';
-import {Bytes} from "@polkadot/types";
 
 interface IUserBuilder {
   keyUris?: string[];

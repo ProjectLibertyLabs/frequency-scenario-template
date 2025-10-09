@@ -2,7 +2,6 @@
  * Sample application showing how to initialize the environment
  * and do a basic chain operation.
  */
-
 // Examples do not require all dependencies for examples
 import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
@@ -16,11 +15,8 @@ import {
   ConnectAction,
   ConnectionType,
   PrivacyType,
-  ImportBundleBuilder,
-  Update,
   KeyData,
   AddGraphKeyAction,
-  Action,
   AddKeyUpdate,
 } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
@@ -45,7 +41,7 @@ function getTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: Sch
   config.graphPublicKeySchemaId = keySchemaId.toNumber();
   return config;
 }
-
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConnection(from: User, to: User, schemaId: number, toKeys?: { keys: KeyData[]; keysHash: number }): ConnectAction {
   const connection = {
     type: 'Connect',
