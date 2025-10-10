@@ -1,6 +1,6 @@
 import { FrameSystemEventRecord } from '@polkadot/types/lookup';
 import { Vec } from '@polkadot/types-codec';
-import { AugmentedSubmittable, SubmittableExtrinsic, VoidFn } from '@polkadot/api/types';
+import { AugmentedSubmittable, SubmittableExtrinsic } from '@polkadot/api/types';
 import { IMethod, ISubmittableResult } from '@polkadot/types/types';
 import { Call, EventRecord } from '@polkadot/types/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
