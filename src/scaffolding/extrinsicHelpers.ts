@@ -1,3 +1,4 @@
+import '@frequency-chain/api-augment';
 import { ApiPromise, ApiRx } from '@polkadot/api';
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from '@polkadot/api/types';
 import { Compact, u128, u16, u32, u64, Vec, Option } from '@polkadot/types';
