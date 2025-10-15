@@ -1,6 +1,9 @@
+import '@frequency-chain/api-augment';
 import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
+import { Option } from '@polkadot/types';
+import type { CommonPrimitivesMsaProviderApplicationContext } from '@polkadot/types/lookup';
 import log from 'loglevel';
 import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
@@ -242,7 +245,11 @@ export class UserBuilder {
       allKeys: this.values.allKeys!,
     };
 
-    const providerRegistryEntryOption = await ExtrinsicHelper.apiPromise.query.msa.providerToRegistryEntryV2(msaId);
+    const providerRegistryEntryOption = (await ExtrinsicHelper.apiPromise.call.msa.getProviderApplicationContext(
+      msaId,
+      null,
+      null,
+    )) as Option<CommonPrimitivesMsaProviderApplicationContext>;
     if (providerRegistryEntryOption.isNone) {
       if (this.values.providerName) {
         const op = ExtrinsicHelper.createProvider(this.defaultKeypair, this.values.providerName);
