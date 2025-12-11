@@ -32,7 +32,6 @@ jobs:
 
       - name: package dry run
         run: npm run pack
-
   lint:
     name: 'Lint'
     runs-on: ubuntu-latest
@@ -54,3 +53,24 @@ jobs:
 
       - name: Lint packages
         run: npm run lint:ci
+  test:
+    name: 'E2E Test'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm i
+
+      - name: Start frequency
+        run: npm run chain:start
+
+      - name: Run example ${{ matrix.example }}
+        run:  npm run test:ci
+
