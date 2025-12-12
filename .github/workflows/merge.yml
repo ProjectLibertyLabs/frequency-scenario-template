@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write  # Required for OIDC
 
 jobs:
   test:
@@ -29,10 +30,6 @@ jobs:
   publish-npm-rc:
     name: Publish NPM Release Candidate
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -54,10 +51,6 @@ jobs:
         working-directory: dist
         shell: bash
         run: npm version --new-version "v0.0.0-${FULL_SHA:0:6}" --no-git-tag-version
-
-        # Required for Granular Access Tokens
-      - name: NPM Access Config
-        run: npm config set //registry.npmjs.org/:_authToken ${{secrets.NPM_AUTH_TOKEN}}
 
       - name: Publish on NPM @next
         run: npm publish --verbose --tag next --access public

@@ -25,10 +25,6 @@ jobs:
   publish-npm:
     name: Publish NPM Package
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [22.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -48,10 +44,6 @@ jobs:
         if: env.TEST_RUN != 'true'
         run: npm version --new-version "${{env.NEW_RELEASE_TAG}}" --no-git-tag-version
         working-directory: dist
-
-        # Required for Granular Access Tokens
-      - name: NPM Access Config
-        run: npm config set //registry.npmjs.org/:_authToken ${{secrets.NPM_AUTH_TOKEN}}
 
       - name: Release on NPM @latest
         if: env.TEST_RUN != 'true' && steps.is-full-release.outputs.is-full-release == 'true'
