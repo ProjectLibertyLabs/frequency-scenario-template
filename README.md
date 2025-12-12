@@ -1,4 +1,5 @@
 # Frequency Scenario Template
+[![Merge to Main](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/merge.yml/badge.svg)](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/merge.yml)
 
 Scaffolding and examples for scripting scenarios and setup for a local Frequency blockchain environment
 
