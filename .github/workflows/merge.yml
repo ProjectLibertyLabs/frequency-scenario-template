@@ -5,10 +5,6 @@ on:
   push:
     branches: ['main']
 
-permissions:
-  contents: read
-  id-token: write  # Required for OIDC
-
 jobs:
   test:
     name: 'E2E Test'
@@ -45,13 +41,10 @@ jobs:
       - name: build
         run: npm run build
 
-      - name: Version Package
+      - name: Version package and publish on NPM @next
         env:
           FULL_SHA: ${{github.sha}}
-        working-directory: dist
-        shell: bash
-        run: npm version --new-version "v0.0.0-${FULL_SHA:0:6}" --no-git-tag-version
-
-      - name: Publish on NPM @next
-        run: npm publish --verbose --tag next --access public
-        working-directory: dist
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "v0.0.0-${FULL_SHA:0:6}"
+          package-tag: 'next'
