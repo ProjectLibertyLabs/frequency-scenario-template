@@ -5,7 +5,7 @@ inputs:
   node-version:
     description: 'Version Spec of the version to use. Examples: 12.x, 10.15.1, >=10.15.0.'
     required: false
-    default: '20.x'
+    default: '22.x'
   cache:
     description: 'Used to specify a package manager for caching in the default directory. Supported values: npm, yarn, pnpm.'
     required: false

@@ -13,21 +13,17 @@ jobs:
   build:
     name: 'Build'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Setup Node and npm
+        uses: ./.github/workflows/common/setup-node-and-npm
         with:
-          node-version: ${{ matrix.node-version }}
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: build
         run: npm run build
@@ -37,21 +33,17 @@ jobs:
   lint:
     name: 'Lint'
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20.x]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Setup Node and npm
+        uses: ./.github/workflows/common/setup-node-and-npm
         with:
-          node-version: ${{ matrix.node-version }}
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm i
+        run: npm ci
 
       - name: Lint packages
         run: npm run lint:ci
