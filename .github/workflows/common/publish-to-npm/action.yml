@@ -21,12 +21,12 @@ runs:
         - name: Version Package
           shell: bash
           working-directory: dist
-          run: npm version --new-version "${{ version }}" --no-git-tag-version
+          run: npm version --new-version "${{ inputs.version }}" --no-git-tag-version
 
         - name: Publish on NPM with tag
           if: ${{ package-tag != '' }}
           working-directory: dist
-          run: npm publish --verbose --tag ${{ package-tag }} --access public
+          run: npm publish --verbose --tag ${{ inputs.package-tag }} --access public
 
         - name: Publish on NPM without tag
           if: ${{ package-tage == '' }}
