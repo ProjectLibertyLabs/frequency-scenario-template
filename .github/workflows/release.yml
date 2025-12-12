@@ -13,6 +13,10 @@ on:
       - 'v0.0.1' # used for testing only
       - 'v0.0.1-rc[0-9]+' # used for testing only
 
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC
+
 env:
   NEW_RELEASE_TAG: ${{github.ref_name}}
   TEST_RUN: ${{startsWith(github.ref_name, 'v0.0.1')}}
@@ -29,13 +33,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Setup Node and npm
+        uses: ./.github/workflows/common/setup-node-and-npm
         with:
-          node-version: ${{ matrix.node-version }}
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm i
+        run: npm ci
 
       - name: build
         run: npm run build
