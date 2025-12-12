@@ -13,10 +13,6 @@ on:
       - 'v0.0.1' # used for testing only
       - 'v0.0.1-rc[0-9]+' # used for testing only
 
-permissions:
-  contents: read
-  id-token: write  # Required for OIDC
-
 env:
   NEW_RELEASE_TAG: ${{github.ref_name}}
   TEST_RUN: ${{startsWith(github.ref_name, 'v0.0.1')}}
@@ -40,17 +36,16 @@ jobs:
       - name: build
         run: npm run build
 
-      - name: Version Package
-        if: env.TEST_RUN != 'true'
-        run: npm version --new-version "${{env.NEW_RELEASE_TAG}}" --no-git-tag-version
-        working-directory: dist
-
-      - name: Release on NPM @latest
+      - name: Full Release on NPM @latest
         if: env.TEST_RUN != 'true' && steps.is-full-release.outputs.is-full-release == 'true'
-        run: npm publish --tag latest --access public
-        working-directory: dist
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "${{ env.NEW_RELEASE_TAG }}"
+          package-tag: 'latest'
 
       - name: Release Candidate on NPM
         if: env.TEST_RUN != 'true' && steps.is-full-release.outputs.is-full-release != 'true'
-        run: npm publish --access public
-        working-directory: dist
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "${{ env.NEW_RELEASE_TAG }}"
+

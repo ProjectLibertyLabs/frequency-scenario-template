@@ -1,0 +1,34 @@
+name: "Publish to npm"
+description: 'Publish package to npmjs.com'
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC
+
+inputs:
+  package-tag:
+    description: 'What to tag this package'
+    required: false
+    default: ""
+
+  version:
+    description: 'Semver version string'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+        - name: Version Package
+          shell: bash
+          working-directory: dist
+          run: npm version --new-version "${{ version }}" --no-git-tag-version
+
+        - name: Publish on NPM with tag
+          if: ${{ package-tag != '' }}
+          working-directory: dist
+          run: npm publish --verbose --tag ${{ package-tag }} --access public
+
+        - name: Publish on NPM without tag
+          if: ${{ package-tage == '' }}
+          working-directory: dist
+          run: npm publish --verbose --access public
