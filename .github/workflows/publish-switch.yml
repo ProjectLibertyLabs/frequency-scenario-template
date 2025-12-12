@@ -1,0 +1,39 @@
+name: publish-switch.yml
+on:
+  push:
+    branches: ['main']
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC
+
+jobs:
+  publish-npm-rc:
+    if: github.event_name == 'push'
+    name: Publish NPM Release Candidate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # Required for OIDC
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node and npm
+        uses: ./.github/workflows/common/setup-node-and-npm
+        with:
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: build
+        run: npm run build
+
+      - name: Version package and publish on NPM @next
+        env:
+          FULL_SHA: ${{github.sha}}
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "v0.0.0-${FULL_SHA:0:6}"
+          package-tag: 'next'
