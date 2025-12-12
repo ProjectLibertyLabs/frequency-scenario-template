@@ -17,18 +17,18 @@ inputs:
 
 runs:
   using: 'composite'
+  shell: bash
   steps:
         - name: Version Package
-          shell: bash
           working-directory: dist
           run: npm version --new-version "${{ inputs.version }}" --no-git-tag-version
 
         - name: Publish on NPM with tag
-          if: ${{ package-tag != '' }}
+          if: ${{ inputs.package-tag != '' }}
           working-directory: dist
           run: npm publish --verbose --tag ${{ inputs.package-tag }} --access public
 
         - name: Publish on NPM without tag
-          if: ${{ package-tage == '' }}
+          if: ${{ inputs.package-tag == '' }}
           working-directory: dist
           run: npm publish --verbose --access public
