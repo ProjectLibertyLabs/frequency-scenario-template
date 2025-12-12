@@ -4,7 +4,9 @@ runs:
   using: 'composite'
   steps:
     - name: Start frequency
+      shell: bash
       run: npm run chain:start
 
     - name: Run example ${{ matrix.example }}
+      shell: bash
       run:  npm run test:ci
