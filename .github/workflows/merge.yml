@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: e2e-test
-        uses: ./.github/common/e2e-test
+        uses: ./.github/workflows/common/e2e-test
   publish-npm-rc:
     name: Publish NPM Release Candidate
     runs-on: ubuntu-latest
