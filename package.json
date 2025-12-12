@@ -23,7 +23,10 @@
     "format": "tsc -p ./tsconfig.eslint.json --noEmit --pretty && npm run prettier && npm run lint:fix",
     "prettier": "npx prettier --write src",
     "pack": "cd dist && npm pack",
-    "run-example": "set -a ; source .env ; tsx -r tsconfig-paths/register src/examples/${npm_config_example}.ts"
+    "run-example": "set -a ; source .env ; tsx -r tsconfig-paths/register src/examples/${npm_config_example}.ts",
+    "chain:start": "docker compose -f docker-compose.yml up frequency -d --wait --wait-timeout 45",
+    "chain:stop": "docker compose -f docker-compose.yml down frequency",
+    "test:ci": "./scripts/e2e.sh"
   },
   "repository": {
     "type": "git",
@@ -37,7 +40,7 @@
   },
   "homepage": "https://github.com/ProjectLibertyLabs/frequency-scenario-template#readme",
   "dependencies": {
-    "@frequency-chain/api-augment": "1.17.6-rc1",
+    "@frequency-chain/api-augment": "1.17.8",
     "@polkadot/api": "16.4.8",
     "@polkadot/keyring": "13.5.7",
     "@polkadot/types": "16.4.8",

@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/master/schema/compose-spec.json
+services:
+  frequency:
+    image: frequencychain/standalone-node:latest
+    # We need to specify the platform because it's the only image
+    # built by Frequency at the moment, and auto-pull won't work otherwise
+    platform: linux/amd64
+    # Uncomment SEALING_MODE and SEALING_INTERVAL if you want to use interval sealing.
+    # Other options you may want to add depending on your test scenario.
+    environment:
+      - SEALING_MODE=interval
+      - SEALING_INTERVAL=1
+    #   - CREATE_EMPTY_BLOCKS=true
+    # The 'command' may contain additional CLI options to the Frequency node,
+    # such as:
+    # --state-pruning=archive
+    command: --offchain-worker=always --enable-offchain-indexing=true
+    healthcheck:
+      test: ["CMD", "bash", "-c", "curl -X POST -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"method\":\"system_health\",\"params\":[],\"id\":1}' http://127.0.0.1:9944 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - 9944:9944
+    networks:
+      - gateway-net
+    volumes:
+      - chainstorage:/data
+    profiles:
+      - local-node
+
+volumes:
+  chainstorage:
+
+networks:
+  gateway-net:

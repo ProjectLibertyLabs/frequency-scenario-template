@@ -1,0 +1,12 @@
+name: 'End-to-end test(s)'
+description: 'Runs 1 or more of the examples in src/examples against frequency docker container'
+runs:
+  using: 'composite'
+  steps:
+    - name: Start frequency
+      shell: bash
+      run: npm run chain:start
+
+    - name: Run example ${{ matrix.example }}
+      shell: bash
+      run:  npm run test:ci
