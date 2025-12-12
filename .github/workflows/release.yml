@@ -13,6 +13,10 @@ on:
       - 'v0.0.1' # used for testing only
       - 'v0.0.1-rc[0-9]+' # used for testing only
 
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC
+
 env:
   NEW_RELEASE_TAG: ${{github.ref_name}}
   TEST_RUN: ${{startsWith(github.ref_name, 'v0.0.1')}}
