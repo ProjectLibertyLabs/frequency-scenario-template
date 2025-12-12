@@ -1,10 +1,6 @@
 name: "Publish to npm"
 description: 'Publish package to npmjs.com'
 
-permissions:
-  contents: read
-  id-token: write  # Required for OIDC
-
 inputs:
   package-tag:
     description: 'What to tag this package'
