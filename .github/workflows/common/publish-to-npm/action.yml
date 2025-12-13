@@ -23,10 +23,10 @@ runs:
           if: ${{ inputs.package-tag != '' }}
           shell: bash
           working-directory: dist
-          run: npm publish --verbose --tag ${{ inputs.package-tag }} --access public --provenance
+          run: npm publish --verbose --tag ${{ inputs.package-tag }} --access public
 
         - name: Publish on NPM without tag
           if: ${{ inputs.package-tag == '' }}
           shell: bash
           working-directory: dist
-          run: npm publish --verbose --access public --provenance
+          run: npm publish --verbose --access public
