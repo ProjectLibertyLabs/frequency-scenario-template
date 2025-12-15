@@ -1,15 +1,22 @@
-name: publish-switch.yml
+name: Publish to NPM
+run-name: Publish ${{ github.ref_name }} to NPM
+
 on:
   push:
-    branches: ['main']
+    branches: [main]
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+' # ex. v1.0.0
+      - 'v[0-9]+.[0-9]+.[0-9]+-rc[0-9]+' # ex. v1.1.0-rc1
+      - 'v0.0.1' # used for testing only
+      - 'v0.0.1-rc[0-9]+' # used for testing only
 
 permissions:
   contents: read
   id-token: write  # Required for OIDC
 
 jobs:
-  publish-npm-rc:
-    if: github.event_name == 'push'
+  publish-npm-dev:
+    if: github.ref == 'refs/heads/main'
     name: Publish NPM Release Candidate
     runs-on: ubuntu-latest
     permissions:
@@ -37,3 +44,48 @@ jobs:
         with:
           version: "v0.0.0-${FULL_SHA:0:6}"
           package-tag: 'next'
+
+  publish-npm-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    name: Publish NPM Release
+    runs-on: ubuntu-latest
+    env:
+      NEW_RELEASE_TAG: ${{github.ref_name}}
+      TEST_RUN: ${{startsWith(github.ref_name, 'v0.0.1')}}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node and npm
+        uses: ./.github/workflows/common/setup-node-and-npm
+        with:
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: build
+        run: npm run build
+
+      - name: Check if full release
+        id: is-full-release
+        run: |
+          if [[ "${{ github.ref_name }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is-full-release=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-full-release=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Full Release on NPM @latest
+        if: env.TEST_RUN != 'true' && steps.is-full-release.outputs.is-full-release == 'true'
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "${{ env.NEW_RELEASE_TAG }}"
+          package-tag: 'latest'
+
+      - name: Release Candidate on NPM
+        if: env.TEST_RUN != 'true' && steps.is-full-release.outputs.is-full-release != 'true'
+        uses: ./.github/workflows/common/publish-to-npm
+        with:
+          version: "${{ env.NEW_RELEASE_TAG }}"
+
