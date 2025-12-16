@@ -17,7 +17,7 @@ permissions:
 jobs:
   publish-npm-dev:
     if: github.ref == 'refs/heads/main'
-    name: Publish NPM Release Candidate
+    name: Publish NPM Dev Release
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,4 +88,4 @@ jobs:
         uses: ./.github/workflows/common/publish-to-npm
         with:
           version: "${{ env.NEW_RELEASE_TAG }}"
-
+          package-tag: 'next'

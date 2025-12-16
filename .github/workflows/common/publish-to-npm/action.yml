@@ -17,7 +17,7 @@ runs:
         - name: Version Package
           working-directory: dist
           shell: bash
-          run: npm version --new-version "${{ inputs.version }}" --no-git-tag-version
+          run: npm version "${{ inputs.version }}" --no-git-tag-version
 
         - name: Publish on NPM with tag
           if: ${{ inputs.package-tag != '' }}
