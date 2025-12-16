@@ -1,5 +1,6 @@
 # Frequency Scenario Template
 [![Merge to Main](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/merge.yml/badge.svg)](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/merge.yml)
+[![Publish to NPM](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/publish-switch.yml/badge.svg)](https://github.com/ProjectLibertyLabs/frequency-scenario-template/actions/workflows/publish-switch.yml)
 
 Scaffolding and examples for scripting scenarios and setup for a local Frequency blockchain environment
 
