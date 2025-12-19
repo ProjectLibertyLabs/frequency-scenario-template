@@ -3,44 +3,24 @@
  * and do a basic chain operation.
  */
 // Examples do not require all dependencies for examples
-import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
-  Config,
-  SchemaConfig,
-  DsnpVersion,
-  Graph,
-  DevEnvironment,
-  DsnpKeys,
-  EnvironmentType,
-  ConnectAction,
-  ConnectionType,
-  PrivacyType,
-  KeyData,
   AddGraphKeyAction,
   AddKeyUpdate,
+  ConnectAction,
+  ConnectionType,
+  DsnpKeys,
+  EnvironmentType,
+  Graph,
+  KeyData,
+  PrivacyType,
 } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
-import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { hexToU8a } from '@polkadot/util';
-import { Option } from '@polkadot/types';
-import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
-import { User } from '#app/scaffolding/user.js';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { initialize, devAccounts } from '../scaffolding/helpers.js';
-import { SchemaBuilder } from '../scaffolding/schema-builder';
-import { UserBuilder } from '../scaffolding/user-builder.js';
+import {ItemizedStoragePageResponse, PaginatedStorageResponse} from '@frequency-chain/api-augment/interfaces';
+import {hexToU8a} from '@polkadot/util';
+import {Option} from '@polkadot/types';
+import {PalletCapacityCapacityDetails} from '@polkadot/types/lookup';
+import {devAccounts, ExtrinsicHelper, initialize, User, UserBuilder} from '../scaffolding';
 
-function getTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: SchemaId): Config {
-  const config: Config = {} as Config;
-  config.sdkMaxStaleFriendshipDays = 100;
-  config.maxPageId = 100;
-  config.dsnpVersions = [DsnpVersion.Version1_0];
-  config.maxGraphPageSizeBytes = 100;
-  config.maxKeyPageSizeBytes = 100;
-  config.schemaMap = schemaMap;
-  config.graphPublicKeySchemaId = keySchemaId.toNumber();
-  return config;
-}
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConnection(from: User, to: User, schemaId: number, toKeys?: { keys: KeyData[]; keysHash: number }): ConnectAction {
   const connection = {
@@ -66,20 +46,9 @@ function createConnection(from: User, to: User, schemaId: number, toKeys?: { key
 const AMOUNT_TO_STAKE = 20000000000000n;
 
 async function main() {
-  // Connect to chain & initialize API
+  // Connect to chain and initialize API
   await initialize();
   log.setLevel('trace');
-
-  // Create graph schemata
-  const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
-  const userPublicFollows = descriptorForUserDataType(UserDataType.PublicFollows);
-  const publicFollowSchema = await schemaBuilder.withModel(userPublicFollows.avroSchema).build(devAccounts[0].keys);
-  const userPrivateFollows = descriptorForUserDataType(UserDataType.PrivateFollows);
-  const privateFollowSchema = await schemaBuilder.withModel(userPrivateFollows.avroSchema).build(devAccounts[0].keys);
-  const userPrivateConnections = descriptorForUserDataType(UserDataType.PrivateConnections);
-  const privateFriendSchema = await schemaBuilder.withModel(userPrivateConnections).build(devAccounts[0].keys);
-  const publicKey = descriptorForUserDataType(UserDataType.KeyAgreementPublicKeys);
-  const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).withSettings(['AppendOnly']).build(devAccounts[0].keys);
 
   // Create MSAs and register a Provider
   const builder = new UserBuilder();
@@ -89,7 +58,14 @@ async function main() {
   const stakeAmount = AMOUNT_TO_STAKE - (typeof capacity.totalCapacityIssued === 'bigint' ? capacity.totalCapacityIssued : capacity.totalCapacityIssued.toBigInt());
   await ExtrinsicHelper.stake(provider.keypair, provider.providerId, stakeAmount).signAndSend();
 
-  const userBuilder = builder.withDelegation(provider, [publicFollowSchema.id, privateFollowSchema.id, privateFriendSchema.id, publicKeySchema.id]);
+  const environment = { environmentType: EnvironmentType.Mainnet };
+  const graph = new Graph(environment);
+  const publicFollowIntentId = graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
+  const privateFollowIntentId = graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Private);
+  const privateFriendIntentId = graph.getSchemaIdFromConfig(environment, ConnectionType.Friendship, PrivacyType.Private);
+  const publicKeyIntentId = graph.getGraphConfig(environment).graphPublicKeySchemaId;
+
+  const userBuilder = builder.withDelegation(provider, [publicFollowIntentId, privateFollowIntentId, privateFriendIntentId, publicKeyIntentId]);
 
   const users: User[] = [];
   const alice = await userBuilder.withKeypair(devAccounts[0].keys).build();
@@ -103,51 +79,15 @@ async function main() {
   const eve = await userBuilder.withKeypair(devAccounts[4].keys).build();
   users.push(eve);
 
-  log.info(`
-  Follow(Public) Schema ID: ${publicFollowSchema.id.toNumber()}
-  Follow(Private) Schema ID: ${privateFollowSchema.id.toNumber()}
-  Friendship(Private) Schema ID: ${privateFriendSchema.id.toNumber()}
-  DSNP Key Schema ID: ${publicKeySchema.id.toNumber()}
-
-  Provider (Ferdie) ID: ${provider.providerId?.toString()}
-
-  User (Alice) MSA ID: ${alice.msaId.toString()}
-  User (Bob) MSA ID: ${bob.msaId.toString()}
-  User (Charlie) MSA ID: ${charlie.msaId.toString()}
-  User (Dave) MSA ID: ${dave.msaId.toString()}
-  User (Eve) MSA ID: ${eve.msaId.toString()}
-  `);
-
-  const schemaMap: Record<number, SchemaConfig> = {};
-  schemaMap[publicFollowSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Follow,
-    privacyType: PrivacyType.Public,
-  };
-  schemaMap[privateFollowSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Follow,
-    privacyType: PrivacyType.Private,
-  };
-  schemaMap[privateFriendSchema.id.toNumber()] = {
-    dsnpVersion: DsnpVersion.Version1_0,
-    connectionType: ConnectionType.Friendship,
-    privacyType: PrivacyType.Private,
-  };
   const a = ExtrinsicHelper.api.consts.frequencyTxPayment.maximumCapacityBatchLength;
   log.debug(`Max capacity batch: ${a}`);
-  const environment: DevEnvironment = { environmentType: EnvironmentType.Dev, config: getTestConfig(schemaMap, publicKeySchema.id) };
-  const graph = new Graph(environment);
-
-  const schemaId = graph.getSchemaIdFromConfig(environment, ConnectionType.Follow, PrivacyType.Public);
 
   // Clear all users' graphs
-
   for (const user of users) {
     log.info(`Clearing existing graph for MSA ${user.msaId.toString()}`);
-    // Fetch user's public follow graph
 
-    const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
+    // Fetch the user's public follow graph
+    const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, publicFollowIntentId);
 
     const pageArray: PaginatedStorageResponse[] = pages.toArray();
 
@@ -160,7 +100,7 @@ async function main() {
   // Install public key(s)
 
   for (const user of users) {
-    const itemizedPage: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeySchema.id);
+    const itemizedPage: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeyIntentId);
     if (itemizedPage.items.length > 0) {
       log.info(`Found an existing public graph key for user ${user.msaId.toString()}; skipping key install`);
 
@@ -188,7 +128,7 @@ async function main() {
             },
           },
         ];
-        return ExtrinsicHelper.applyItemActions(user.keypair, publicKeySchema.id, user.msaId, keyActions, 0).fundAndSend();
+        return ExtrinsicHelper.applyItemActions(user.keypair, publicKeyIntentId, user.msaId, keyActions, 0).fundAndSend();
       });
 
     await Promise.all(promises);
@@ -240,7 +180,7 @@ Building new graph for user ${user.msaId.toString()}`);
 
     // Import the user's keys
     // eslint-disable-next-line no-await-in-loop
-    const publicKeys: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeySchema.id);
+    const publicKeys: ItemizedStoragePageResponse = await ExtrinsicHelper.getItemizedStorage(user.msaId, publicKeyIntentId);
     const keyData: KeyData[] = publicKeys.items.toArray().map((pk) => ({
       index: pk.index.toNumber(),
       content: hexToU8a(pk.payload.toHex()),
@@ -262,7 +202,7 @@ Building new graph for user ${user.msaId.toString()}`);
       bb = bb.withPageData(page.page_id.toNumber(), page.payload, page.content_hash.toNumber());
     });
 
-    log.info('Re-importing graph from chain');
+    log.info('Re-importing graph from the chain');
     const importBundle = bb.build();
     // log.debug(JSON.stringify(importBundle));
 

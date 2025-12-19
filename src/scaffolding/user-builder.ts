@@ -1,84 +1,78 @@
-import { MessageSourceId, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import {IntentId, MessageSourceId} from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import log from 'loglevel';
 import { firstValueFrom } from 'rxjs';
 import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
-import { EXISTENTIAL_DEPOSIT, generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, signPayloadSr25519 } from './helpers.js';
+import {
+  generateAddKeyPayload,
+  generateClaimHandlePayload,
+  generateDelegationPayload,
+  getDefaultFundingSource,
+  getExistentialDeposit,
+  signPayloadSr25519
+} from './helpers.js';
 import { apiCreateKeys } from './apiConnection.js';
+import {Builder} from "#app/scaffolding/builder";
 
 interface IUserBuilder {
   keyUris?: string[];
   allKeys?: KeyringPair[];
-  msaId?: MessageSourceId | AnyNumber;
+  id?: MessageSourceId | AnyNumber;
   providerName?: string;
   delegation?: {
     delegate: User;
-    schemaIds: (SchemaId | AnyNumber)[];
+    intentIds: (IntentId | AnyNumber)[];
   };
   initialFundingLevel?: bigint;
   paymentMethod?: 'token' | 'capacity' | 'provider' | KeyringPair;
   handle?: string;
 }
 
-export class UserBuilder {
-  private values: IUserBuilder = {};
-
-  constructor(input?: IUserBuilder) {
-    this.values = input ?? {};
+export class UserBuilder extends Builder<IUserBuilder, typeof User> {
+  public resolve(): Promise<User | undefined> {
+      throw new Error('Method not implemented.');
   }
-
   public get defaultKeypair(): KeyringPair {
     return this.values.allKeys![0];
   }
 
-  public withKeyUri(uri: string): UserBuilder {
-    return new UserBuilder({ ...this.values, keyUris: [...(this.values?.keyUris ?? []), uri] });
-  }
+  readonly withKeyUri = this.arrayPropertyAppender('keyUris');
+  readonly withKeypair = this.arrayPropertyAppender('allKeys');
+  readonly withMsaId = this.propertySetter('id');
+  readonly withHandle = this.propertySetter('handle');
 
-  public withKeypair(keys: KeyringPair): UserBuilder {
-    return new UserBuilder({ ...this.values, allKeys: [...(this.values?.allKeys ?? []), keys] });
-  }
-
-  public withMsaId(msaId: MessageSourceId | AnyNumber): UserBuilder {
-    return new UserBuilder({ ...this.values, msaId });
-  }
-
-  public withHandle(handle: string): UserBuilder {
-    return new UserBuilder({ ...this.values, handle });
-  }
-
-  public withDelegation(delegate: User, schemaIds: (SchemaId | AnyNumber)[]): UserBuilder {
+  public withDelegation(delegate: User, intentIds: (IntentId | AnyNumber)[]): UserBuilder {
     if (!delegate.isProvider) {
       throw new Error('Delegate must be a registered provider');
     }
-    return new UserBuilder({ ...this.values, delegation: { delegate, schemaIds } });
+    return this.withProperty('delegation', { delegate, intentIds });
   }
 
   public asProvider(providerName: string): UserBuilder {
-    return new UserBuilder({ ...this.values, providerName });
+    return this.withProperty('providerName', providerName);
   }
 
   public withFundingSource(keys?: KeyringPair): UserBuilder {
     const fundingSource = keys ?? getDefaultFundingSource().keys;
-    return new UserBuilder({ ...this.values, paymentMethod: fundingSource });
+    return this.withProperty('paymentMethod', fundingSource);
   }
 
   public withInitialFundingLevel(amount: bigint): UserBuilder {
-    return new UserBuilder({ ...this.values, initialFundingLevel: amount });
+    return this.withProperty('initialFundingLevel', amount);
   }
 
   public withCapacityPayment(): UserBuilder {
-    return new UserBuilder({ ...this.values, paymentMethod: 'capacity' });
+    return this.withProperty('paymentMethod', 'capacity');
   }
 
   public withTokenPayment(): UserBuilder {
-    return new UserBuilder({ ...this.values, paymentMethod: 'token' });
+    return this.withProperty('paymentMethod', 'token');
   }
 
   public withProviderPayment(): UserBuilder {
-    return new UserBuilder({ ...this.values, paymentMethod: 'provider' });
+    return this.withProperty('paymentMethod', 'provider');
   }
 
   public async executeUserOp(op: Extrinsic, error?: any) {
@@ -135,12 +129,12 @@ export class UserBuilder {
 
     const accountInfo = await ExtrinsicHelper.getAccountInfo(this.defaultKeypair.address);
     const freeBalance = BigInt(accountInfo.data.free.toString());
-    const fundingLevel = EXISTENTIAL_DEPOSIT + (this.values.initialFundingLevel ?? 0n);
+    const fundingLevel = getExistentialDeposit() + (this.values.initialFundingLevel ?? 0n);
     const fundingAmount = fundingLevel > freeBalance ? fundingLevel - freeBalance : fundingLevel;
 
     if (fundingAmount > 0n && this.values.paymentMethod !== 'provider') {
       try {
-        log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount > EXISTENTIAL_DEPOSIT ? fundingAmount : 'existential deposit'}`);
+        log.info(`Funding account ${this.defaultKeypair.address} with ${fundingAmount > getExistentialDeposit() ? fundingAmount : 'existential deposit'}`);
         await ExtrinsicHelper.transferFunds(fundingSource, this.defaultKeypair, fundingAmount).signAndSend();
       } catch (e: any) {
         throw new Error(
@@ -167,7 +161,7 @@ export class UserBuilder {
         log.info(`Created MSA ${msaId.toString()} for account ${this.defaultKeypair.address}`);
       } else {
         log.info(`Creating a new delegated user for ${this.defaultKeypair.address} to provider ${this.values.delegation.delegate.providerId}`);
-        const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, schemaIds: this.values.delegation.schemaIds });
+        const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, intentIds: this.values.delegation.intentIds });
         const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
         const op = ExtrinsicHelper.createSponsoredAccountWithDelegation(this.defaultKeypair, this.values.delegation.delegate.keypair, signature, payload);
         const [result, eventMap] = await (this.values.paymentMethod === 'provider'
@@ -192,7 +186,7 @@ export class UserBuilder {
       msaId = id.unwrap();
       log.info(`Retrieved existing MSA ${msaId.toString()} for account ${this.defaultKeypair.address}`);
       if (this.values.delegation) {
-        const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, schemaIds: this.values.delegation.schemaIds });
+        const payload = await generateDelegationPayload({ authorizedMsaId: this.values.delegation.delegate.providerId, intentIds: this.values.delegation.intentIds });
         const signature = signPayloadSr25519(this.defaultKeypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
         const op = ExtrinsicHelper.grantDelegation(this.defaultKeypair, this.values.delegation.delegate.keypair, signature, payload);
         await this.executeUserOp(op, new Error(`Failed to grant delegation for MSA ${msaId.toString()} to provider ${this.values.delegation.delegate.providerId?.toString()}`));
@@ -213,8 +207,8 @@ export class UserBuilder {
     }
 
     if ((this.values.allKeys?.length ?? 1) > 1) {
-      this.values.allKeys?.slice(1)?.forEach(async (keys) => {
-        // Check if key is already registered to this or another MSA
+      await Promise.all(this.values.allKeys?.slice(1)?.map(async (keys) => {
+        // Check if the key is already registered to this or another MSA
         const keyId = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId(keys.publicKey);
         if (keyId.isSome) {
           if (keyId.unwrap().toString() === msaId.toString()) {
@@ -234,7 +228,7 @@ export class UserBuilder {
         const op = ExtrinsicHelper.addPublicKeyToMsa(keys, ownerSig, newSig, payload);
         await this.executeUserOp(op, new Error(`Failed to authorize new key for MSA ${msaId.toString()}`));
         log.info(`Authorized new key ${keys.address} for MSA ${msaId.toString()}`);
-      });
+      }));
     }
 
     const userParams: IUser = {

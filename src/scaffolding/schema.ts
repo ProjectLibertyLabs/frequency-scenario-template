@@ -1,21 +1,21 @@
-import { SchemaId } from '@frequency-chain/api-augment/interfaces';
 import avsc from 'avsc';
+import {IIntent, IntentSettingStr, PayloadLocationStr} from "./intent";
 
 export type ModelTypeStr = 'AvroBinary' | 'Parquet';
-export type PayloadLocationStr = 'OnChain' | 'Ipfs' | 'Itemized' | 'Paginated';
-export type SchemaSettingStr = 'AppendOnly' | 'SignatureRequired';
 
 export interface ISchema {
-  id: SchemaId;
+  id: number;
+  intentId: number;
   model: object;
   modelType: ModelTypeStr;
   payloadLocation: PayloadLocationStr;
-  settings?: SchemaSettingStr[];
-  name?: string;
+  settings?: IntentSettingStr[];
 }
 
 export class Schema implements ISchema {
-  private readonly _id: SchemaId;
+  private readonly _id: number;
+
+  private readonly _intentId: number;
 
   private readonly _model: any;
 
@@ -23,19 +23,17 @@ export class Schema implements ISchema {
 
   private readonly _payloadLocation: PayloadLocationStr;
 
-  private readonly _settings: SchemaSettingStr[];
-
-  private readonly _name: string | undefined;
+  private readonly _settings: IntentSettingStr[];
 
   private _codec: avsc.Type | undefined; // TODO: add ParquetJS support
 
-  constructor(source: ISchema) {
+  constructor(source: ISchema, intent?: IIntent) {
+    this._intentId = intent?.id || source.intentId;
     this._model = source.model;
     this._modelType = source.modelType;
-    this._payloadLocation = source.payloadLocation;
-    this._settings = source.settings ?? [];
+    this._payloadLocation = intent?.payloadLocation || source.payloadLocation;
+    this._settings = intent?.settings ?? source.settings ?? [];
     this._id = source.id;
-    this._name = source?.name;
 
     if (this.modelType === 'AvroBinary') {
       const avroModel: avsc.Schema = (() => {
@@ -58,6 +56,10 @@ export class Schema implements ISchema {
     return this._id;
   }
 
+  public get intentId() {
+    return this._intentId;
+  }
+
   public get model() {
     return this._model;
   }
@@ -72,10 +74,6 @@ export class Schema implements ISchema {
 
   public get settings() {
     return this._settings;
-  }
-
-  public get name() {
-    return this?._name;
   }
 
   public fromBuffer(val: any) {

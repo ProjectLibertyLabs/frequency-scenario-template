@@ -3,10 +3,11 @@ import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a, u8aToHex } from '@polkadot/util';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { ExtrinsicHelper, ItemizedSignaturePayload } from './extrinsicHelpers.js';
+import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.js';
 import { Schema } from './schema.js';
 import { SchemaBuilder } from './schema-builder.js';
 import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
+import {IntentBuilder} from "#app/scaffolding/intent-builder";
 
 let publicGraphKeySchema: Schema;
 
@@ -25,14 +26,19 @@ export async function fetchPublicKeySchema(): Promise<void> {
     return;
   }
 
-  // Bug on mainnet: schema 7 (public key) not named; need to specify the complete model to resolve
+  const intent = await new IntentBuilder()
+      .withName('dsnp', 'public-key-key-agreement')
+      .resolve();
+  if (!intent) {
+    throw new Error('dsnp.public-key-key-agreement intent not resolved');
+  }
+
+  if (!intent.schemas || intent.schemas.length === 0) {
+    throw new Error('dsnp.public-key-key-agreement intent has no schemas');
+  }
+
   const schema = await new SchemaBuilder()
-    .withName('dsnp', 'public-key-key-agreement')
-    .withModelType('AvroBinary')
-    .withModel({ type: 'record', name: 'PublicKey', namespace: 'org.dsnp', fields: [{ name: 'publicKey', doc: 'Multicodec public key', type: 'bytes' }] })
-    .withPayloadLocation('Itemized')
-    .withAutoDetectExistingSchema(true)
-    .withSettings(['SignatureRequired', 'AppendOnly'])
+    .withExistingSchemaId(intent.schemas[intent.schemas.length])
     .resolve();
   if (!schema) {
     throw new Error('dsnp.public-key-key-agreement schema not resolved');
@@ -68,14 +74,14 @@ export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexSt
  * @param {KeyringPair} signingKeys MSA keypair to sign the payload with
  * @param {number} targetHash Last known content hash of the public key Itemized storage
  * @param {number} currentBlock Last known "current" block number to be used for computing payload expiration
- * @returns {Promise<{ payload: ItemizedSignaturePayload, proof: Sr25519Signature }>}
+ * @returns {Promise<{ payload: ItemizedSignaturePayloadV2, proof: Sr25519Signature }>}
  */
 export async function getAddGraphKeyPayload(
   publicKey: HexString,
   signingKeys: KeyringPair,
   targetHash: number,
   currentBlock?: number,
-): Promise<{ payload: ItemizedSignaturePayload; proof: Sr25519Signature }> {
+): Promise<{ payload: ItemizedSignaturePayloadV2; proof: Sr25519Signature }> {
   const keyString = publicKey.replace(/^0x/, '');
   const graphKey = {
     publicKey: Buffer.from(keyString, 'hex'),

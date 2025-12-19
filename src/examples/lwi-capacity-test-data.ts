@@ -3,10 +3,7 @@
  * and do a basic chain operation.
  */
 
-import { User } from '#app/scaffolding/user.js';
-import { UserBuilder } from '#app/scaffolding/user-builder.js';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { createKeys, devAccounts, getBlockNumber, initialize, stakeToProvider } from '../scaffolding/helpers.js';
+import {createKeys, devAccounts, ExtrinsicHelper, getBlockNumber, initialize, stakeToProvider, User, UserBuilder} from '../scaffolding';
 
 const firstNames = [
   'Aaliyah',
@@ -95,8 +92,7 @@ const firstNames = [
 ];
 
 function randomName(): string {
-  const name = firstNames[Math.floor(Math.random() * firstNames.length)];
-  return name;
+  return firstNames[Math.floor(Math.random() * firstNames.length)];
 }
 
 async function incrementBlock(num: number) {
@@ -150,7 +146,7 @@ async function createProviders(num: number): Promise<void> {
 }
 
 async function main() {
-  // Connect to chain & initialize API
+  // Connect to chain and initialize API
   await initialize();
 
   // Create 10 providers and stake some tokens to them
