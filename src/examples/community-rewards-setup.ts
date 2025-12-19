@@ -4,10 +4,7 @@
  */
 
 import log from 'loglevel';
-import { User } from '#app/scaffolding/user.js';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { initialize, devAccounts } from '../scaffolding/helpers.js';
-import { UserBuilder } from '../scaffolding/user-builder.js';
+import { devAccounts, ExtrinsicHelper, initialize, User, UserBuilder } from '../scaffolding';
 
 async function main() {
   // Connect to chain & initialize API

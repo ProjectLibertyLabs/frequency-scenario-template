@@ -137,7 +137,7 @@ export class User implements IUser {
   }
 
   public async grantDelegation(provider: User, schemaIds: SchemaId[] | AnyNumber[]) {
-    const payload = await generateDelegationPayload({ authorizedMsaId: provider.msaId, schemaIds });
+    const payload = await generateDelegationPayload({ authorizedMsaId: provider.msaId, intentIds: schemaIds });
     const addProviderData = ExtrinsicHelper.api.registry.createType('PalletMsaAddProvider', payload);
     const signature = signPayloadSr25519(this.keypair, addProviderData);
     const op = ExtrinsicHelper.grantDelegation(this.keypair, provider.keypair, signature, payload);
@@ -156,7 +156,7 @@ export class User implements IUser {
       throw new Error('Cannot create a sponsored account for a user that already has an MSA');
     }
 
-    const payload = await generateDelegationPayload({ authorizedMsaId: provider.providerId, schemaIds });
+    const payload = await generateDelegationPayload({ authorizedMsaId: provider.providerId, intentIds: schemaIds });
     const signature = signPayloadSr25519(this.keypair, ExtrinsicHelper.api.createType('PalletMsaAddProvider', payload));
     const op = ExtrinsicHelper.createSponsoredAccountWithDelegation(this.keypair, provider.keypair, signature, payload);
     const [result, eventMap] = await this.executeOp(op);

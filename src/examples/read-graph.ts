@@ -4,32 +4,29 @@
  */
 
 // Examples do not require all dependencies for examples
-import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
-  SchemaConfig,
-  DsnpVersion,
-  Graph,
-  DsnpKeys,
-  EnvironmentType,
   ConnectionType,
-  PrivacyType,
-  ImportBundleBuilder,
-  KeyData,
-  ImportBundle,
+  DsnpKeys,
+  DsnpVersion,
+  EnvironmentInterface,
+  EnvironmentType,
+  Graph,
   GraphKeyPair,
   GraphKeyType,
-  EnvironmentInterface,
+  ImportBundle,
+  ImportBundleBuilder,
+  KeyData,
+  PrivacyType,
+  SchemaConfig,
 } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
-import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
+import { ItemizedStoragePageResponse, PaginatedStorageResponse } from '@frequency-chain/api-augment/interfaces';
 import { hexToU8a } from '@polkadot/util';
 import minimist from 'minimist';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { initialize, devAccounts } from '../scaffolding/helpers.js';
-import { SchemaBuilder } from '../scaffolding/schema-builder.js';
+import { ExtrinsicHelper, initialize, IntentBuilder } from '../scaffolding';
 
-function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: SchemaId): Config {
+function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: number): Config {
   const config: Config = {} as Config;
   config.sdkMaxStaleFriendshipDays = 100;
   config.maxPageId = 100;
@@ -37,7 +34,7 @@ function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: 
   config.maxGraphPageSizeBytes = 100;
   config.maxKeyPageSizeBytes = 100;
   config.schemaMap = schemaMap;
-  config.graphPublicKeySchemaId = keySchemaId.toNumber();
+  config.graphPublicKeySchemaId = keySchemaId;
   return config;
 }
 
@@ -52,40 +49,39 @@ async function main() {
 
   // Get graph schema IDs
 
-  // For local chains  with Frequency 1.10 or higher, or Testnet (Paseo or Rococo), we can look up the schemas using schema names
-  // For mainnet, until it's upgraded to 1.10, we need to query the graph config
+  // For local chains with Frequency 1.10 or higher, or Testnet (Paseo or Rococo), we can look up the schemas using schema names
   const environmentType: string = EnvironmentType.Mainnet;
   let environment: EnvironmentInterface;
 
   if (environmentType === EnvironmentType.Dev) {
-    const schemaBuilder = new SchemaBuilder().withModelType('AvroBinary').withPayloadLocation('Paginated').withAutoDetectExistingSchema();
-    const userPublicFollows = descriptorForUserDataType(UserDataType.PublicFollows);
-    const publicFollowSchema = await schemaBuilder.withModel(userPublicFollows.avroSchema).build(devAccounts[0].keys);
-    const userPrivateFollows = descriptorForUserDataType(UserDataType.PrivateFollows);
-    const privateFollowSchema = await schemaBuilder.withModel(userPrivateFollows.avroSchema).build(devAccounts[0].keys);
-    const userPrivateConnections = descriptorForUserDataType(UserDataType.PrivateConnections);
-    const privateFriendSchema = await schemaBuilder.withModel(userPrivateConnections).build(devAccounts[0].keys);
-    const publicKey = descriptorForUserDataType(UserDataType.KeyAgreementPublicKeys);
-    const publicKeySchema = await schemaBuilder.withPayloadLocation('Itemized').withModel(publicKey).withSettings(['AppendOnly']).build(devAccounts[0].keys);
+    const intentBuilder = new IntentBuilder().withAutoDetectExisting(true);
+    const publicFollowIntent = await intentBuilder.withName('dsnp', 'public-follows').resolve();
+    const privateFollowIntent = await intentBuilder.withName('dsnp', 'private-follows').resolve();
+    const privateFriendIntent = await intentBuilder.withName('dsnp', 'private-connections').resolve();
+    const publicKeyIntent = await intentBuilder.withName('dsnp', 'public-key-key-agreement').resolve();
+
+    if (!publicFollowIntent || !privateFollowIntent || !privateFriendIntent || !publicKeyIntent) {
+      throw new Error('Failed to resolve graph Intents');
+    }
 
     const schemaMap: Record<number, SchemaConfig> = {};
-    schemaMap[publicFollowSchema.id.toNumber()] = {
+    schemaMap[publicFollowIntent.id] = {
       dsnpVersion: DsnpVersion.Version1_0,
       connectionType: ConnectionType.Follow,
       privacyType: PrivacyType.Public,
     };
-    schemaMap[privateFollowSchema.id.toNumber()] = {
+    schemaMap[privateFollowIntent.id] = {
       dsnpVersion: DsnpVersion.Version1_0,
       connectionType: ConnectionType.Follow,
       privacyType: PrivacyType.Private,
     };
-    schemaMap[privateFriendSchema.id.toNumber()] = {
+    schemaMap[privateFriendIntent.id] = {
       dsnpVersion: DsnpVersion.Version1_0,
       connectionType: ConnectionType.Friendship,
       privacyType: PrivacyType.Private,
     };
 
-    environment = { environmentType, config: getDevTestConfig(schemaMap, publicKeySchema.id) } as EnvironmentInterface;
+    environment = { environmentType, config: getDevTestConfig(schemaMap, publicKeyIntent.id) } as EnvironmentInterface;
   } else {
     environment = { environmentType: environmentType as EnvironmentType };
   }

@@ -40,7 +40,7 @@
   },
   "homepage": "https://github.com/ProjectLibertyLabs/frequency-scenario-template#readme",
   "dependencies": {
-    "@frequency-chain/api-augment": "1.17.8",
+    "@frequency-chain/api-augment": "2.0.0-rc1",
     "@polkadot/api": "16.4.8",
     "@polkadot/keyring": "13.5.7",
     "@polkadot/types": "16.4.8",

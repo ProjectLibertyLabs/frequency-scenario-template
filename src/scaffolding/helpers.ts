@@ -7,7 +7,14 @@ import { HandleResponse, MessageSourceId, PageHash } from '@frequency-chain/api-
 import assert from 'assert';
 import { firstValueFrom } from 'rxjs';
 import Keyring, { encodeAddress } from '@polkadot/keyring';
-import { AddKeyData, AddProviderPayload, ExtrinsicHelper, ItemizedSignaturePayload, PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayload } from './extrinsicHelpers.js';
+import {
+  AddKeyData,
+  AddProviderPayload,
+  ExtrinsicHelper,
+  ItemizedSignaturePayloadV2,
+  PaginatedDeleteSignaturePayload,
+  PaginatedUpsertSignaturePayloadV2,
+} from './extrinsicHelpers.js';
 import env from './env.js';
 import { apiCreateKeys } from './apiConnection.js';
 
@@ -31,11 +38,15 @@ export const CHAIN_ENVIRONMENT = {
   ROCOCO_LOCAL: 'rococo-local',
 };
 
-export let EXISTENTIAL_DEPOSIT: bigint;
+let cacheED: null | bigint = null;
+
+export function getExistentialDeposit(): bigint {
+  if (cacheED !== null) return cacheED;
+  return (cacheED = ExtrinsicHelper.api.consts.balances.existentialDeposit.toBigInt());
+}
 
 export async function initialize(uri?: string): Promise<void> {
   await ExtrinsicHelper.initialize(uri);
-  EXISTENTIAL_DEPOSIT = ExtrinsicHelper.api.consts.balances.existentialDeposit.toBigInt();
 
   if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
     const seedPhrase = process.env.FUNDING_ACCOUNT_SEED_PHRASE;
@@ -108,7 +119,7 @@ export async function generateAddKeyPayload(
   };
 }
 
-export async function generateItemizedSignaturePayload(payloadInputs: ItemizedSignaturePayload, expirationOffset?: number): Promise<ItemizedSignaturePayload> {
+export async function generateItemizedSignaturePayload(payloadInputs: ItemizedSignaturePayloadV2, expirationOffset?: number): Promise<ItemizedSignaturePayloadV2> {
   // eslint-disable-next-line prefer-const
   let { expiration, ...payload } = payloadInputs;
   if (!expiration) {
@@ -121,7 +132,10 @@ export async function generateItemizedSignaturePayload(payloadInputs: ItemizedSi
   };
 }
 
-export async function generatePaginatedUpsertSignaturePayload(payloadInputs: PaginatedUpsertSignaturePayload, expirationOffset?: number): Promise<PaginatedUpsertSignaturePayload> {
+export async function generatePaginatedUpsertSignaturePayload(
+  payloadInputs: PaginatedUpsertSignaturePayloadV2,
+  expirationOffset?: number,
+): Promise<PaginatedUpsertSignaturePayloadV2> {
   // eslint-disable-next-line prefer-const
   let { expiration, ...payload } = payloadInputs;
   if (!expiration) {
@@ -181,7 +195,7 @@ export async function createAndFundKeypair({
   source?: KeyringPair;
   nonce?: number;
 }): Promise<KeyringPair> {
-  const fundingAmount = amount ?? EXISTENTIAL_DEPOSIT;
+  const fundingAmount = amount ?? getExistentialDeposit();
   const defaultFundingSource = getDefaultFundingSource();
   const keypair = createKeys(keyName, uri);
 
@@ -230,7 +244,7 @@ export async function createDelegatorAndDelegation(schemaId: u16, providerId: u6
   // Grant delegation to the provider
   const payload = await generateDelegationPayload({
     authorizedMsaId: providerId,
-    schemaIds: [schemaId],
+    intentIds: [schemaId],
   });
   const addProviderData = ExtrinsicHelper.api.registry.createType('PalletMsaAddProvider', payload);
 
@@ -262,7 +276,7 @@ export async function getHandleForMsa(msaId: MessageSourceId): Promise<Option<Ha
 
 // Creates an MSA and a provider for the given keys
 // Returns the MSA Id of the provider
-export async function createMsaAndProvider(keys: KeyringPair, providerName: string, amount = EXISTENTIAL_DEPOSIT): Promise<u64> {
+export async function createMsaAndProvider(keys: KeyringPair, providerName: string, amount = getExistentialDeposit()): Promise<u64> {
   // Create and fund a keypair with stakeAmount
   // Use this keypair for stake operations
   const defaultFundingSource = getDefaultFundingSource();

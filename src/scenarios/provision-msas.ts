@@ -1,15 +1,21 @@
 import Keyring from '@polkadot/keyring';
 import { AnyNumber } from '@polkadot/types/types';
-import { uniqueNamesGenerator, names, colors, NumberDictionary } from 'unique-names-generator';
+import { colors, names, NumberDictionary, uniqueNamesGenerator } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
 import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
 import { GraphKeyType } from '@projectlibertylabs/graph-sdk';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { StringDecoder } from 'string_decoder';
-import { ChainEventHandler, batchWithCapacityAndWaitForExtrinsics } from '../scaffolding/transactions.js';
-import { getAddGraphKeyPayload, getCurrentPublicGraphKey } from '../scaffolding/graph.js';
-import { AddProviderPayload, ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { Sr25519Signature, signPayloadSr25519 } from '../scaffolding/helpers.js';
+import {
+  AddProviderPayload,
+  batchWithCapacityAndWaitForExtrinsics,
+  ChainEventHandler,
+  ExtrinsicHelper,
+  getAddGraphKeyPayload,
+  getCurrentPublicGraphKey,
+  signPayloadSr25519,
+  Sr25519Signature,
+} from '#app/scaffolding';
 import { ChainUser } from './types.js';
 
 const DEFAULT_GRAPH_SCHEMAS = [8, 9, 10];
@@ -64,7 +70,7 @@ async function resolveUsersFromChain(users: ChainUser[]): Promise<void> {
  *
  * @param {string} baseSeed - Seed phrase/uri to use as a derivation base for the keypair
  * @param {number} numUsers - number of users to create
- * @returns {Promise<ChainUser[]>} An array of initialize users
+ * @returns {Promise<ChainUser[]>} An array of initialized users
  */
 export async function initializeLocalUsers(baseSeed: string, numUsers: number): Promise<ChainUser[]> {
   process.stdout.write(`Creating keypairs for ${numUsers} accounts... `);
@@ -79,7 +85,7 @@ export async function initializeLocalUsers(baseSeed: string, numUsers: number): 
 }
 
 /**
- * Convenience method to get current block number.
+ * Convenience method to get the current block number.
  *
  * @returns {Promise<number>} Current block number
  */
@@ -107,7 +113,7 @@ export function getAddProviderPayload(
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const addProvider: AddProviderPayload = {
     authorizedMsaId: provider.msaId,
-    schemaIds,
+    intentIds: schemaIds,
     expiration: currentBlockNumber + mortalityWindowSize,
   };
   const payload = ExtrinsicHelper.apiPromise.registry.createType('PalletMsaAddProvider', addProvider);
@@ -174,7 +180,7 @@ export async function provisionLocalUserCreationExtrinsics(
  * each detected graph page, create an extrinsic call to `deletePage`
  *
  * @param {ChainUser} users Array of users to have their graphs deleted
- * @param {AnyNumber[]} [schemaIds] Array of schemaIds for graphs to be cleared. (Defaut: DEFAULT_GRAPH_SCHEMAS)
+ * @param {AnyNumber[]} [schemaIds] Array of schemaIds for graphs to be cleared. (Default: DEFAULT_GRAPH_SCHEMAS)
  * @returns {Promise<void[]>}
  */
 export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumber[]): Promise<void[]> {
@@ -245,7 +251,7 @@ export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWe
 }
 
 /**
- * Execute previously-provisioned extrinsic call for an array of users on-chain, and await their completion.
+ * Execute previously provisioned extrinsic call for an array of users on-chain and await their completion.
  *
  * @param {KeyringPair} payorKeys - Signing keys for the account that will be submitting the transactions.
  * @param {ChainUser[]} users - Array of users to be provisioned on-chain
