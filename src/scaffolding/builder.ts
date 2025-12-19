@@ -4,7 +4,6 @@ import {KeyringPair} from '@polkadot/keyring/types';
 type CTor = new(...args: any[]) => any;
 type BuilderCTor<IFace, Self> =  new(arg: IFace) => Self;
 type ArrayProp<T, K extends keyof T> = Extract<NonNullable<T[K]>, readonly unknown[]>;
-type ElementOf<T> = T extends readonly (infer U)[] ? U : never;
 type ArrayElem<T, K extends keyof T> =
     NonNullable<T[K]> extends readonly (infer U)[] ? U : never;
 type ArrayKeys<T> = {

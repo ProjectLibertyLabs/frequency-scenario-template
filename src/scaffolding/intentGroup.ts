@@ -1,5 +1,3 @@
-import {IntentGroupId, IntentId} from '@frequency-chain/api-augment/interfaces';
-
 export interface IIntentGroup {
   id: number;
   name?: string;

@@ -1,9 +1,9 @@
 import '@frequency-chain/api-augment';
 import {KeyringPair} from '@polkadot/keyring/types';
-import {ModelTypeStr, Schema, ISchema} from './schema.js';
-import {ExtrinsicHelper} from './extrinsicHelpers.js';
-import {IntentBuilder} from "#app/scaffolding/intent-builder";
-import {Builder, BuilderWithName} from "#app/scaffolding/builder";
+import {ISchema, ModelTypeStr, Schema} from './schema';
+import {ExtrinsicHelper} from './extrinsicHelpers';
+import {IntentBuilder} from "./intent-builder";
+import {BuilderWithName} from "./builder";
 
 export interface ISchemaBuilder {
     id?: number;

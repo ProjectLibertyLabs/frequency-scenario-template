@@ -4,31 +4,27 @@
  */
 
 // Examples do not require all dependencies for examples
-import { descriptorForUserDataType, UserDataType } from '@dsnp/schemas';
 import {
   Config,
-  SchemaConfig,
-  DsnpVersion,
-  Graph,
-  DsnpKeys,
-  EnvironmentType,
   ConnectionType,
-  PrivacyType,
-  ImportBundleBuilder,
-  KeyData,
-  ImportBundle,
+  DsnpKeys,
+  DsnpVersion,
+  EnvironmentInterface,
+  EnvironmentType,
+  Graph,
   GraphKeyPair,
   GraphKeyType,
-  EnvironmentInterface,
+  ImportBundle,
+  ImportBundleBuilder,
+  KeyData,
+  PrivacyType,
+  SchemaConfig,
 } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
-import { ItemizedStoragePageResponse, PaginatedStorageResponse, SchemaId } from '@frequency-chain/api-augment/interfaces';
-import { hexToU8a } from '@polkadot/util';
+import {ItemizedStoragePageResponse, PaginatedStorageResponse} from '@frequency-chain/api-augment/interfaces';
+import {hexToU8a} from '@polkadot/util';
 import minimist from 'minimist';
-import { ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { initialize, devAccounts } from '../scaffolding/helpers.js';
-import { SchemaBuilder } from '../scaffolding/schema-builder.js';
-import {IntentBuilder} from "../scaffolding/intent-builder";
+import {ExtrinsicHelper, initialize, IntentBuilder} from '../scaffolding';
 
 function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: number): Config {
   const config: Config = {} as Config;

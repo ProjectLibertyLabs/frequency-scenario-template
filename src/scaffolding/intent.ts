@@ -1,5 +1,3 @@
-import {IntentGroupId, IntentId, SchemaId} from '@frequency-chain/api-augment/interfaces';
-
 export type PayloadLocationStr = 'OnChain' | 'Ipfs' | 'Itemized' | 'Paginated';
 export type IntentSettingStr = 'AppendOnly' | 'SignatureRequired';
 
