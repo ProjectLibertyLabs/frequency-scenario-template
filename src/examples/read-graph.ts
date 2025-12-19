@@ -21,10 +21,10 @@ import {
   SchemaConfig,
 } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
-import {ItemizedStoragePageResponse, PaginatedStorageResponse} from '@frequency-chain/api-augment/interfaces';
-import {hexToU8a} from '@polkadot/util';
+import { ItemizedStoragePageResponse, PaginatedStorageResponse } from '@frequency-chain/api-augment/interfaces';
+import { hexToU8a } from '@polkadot/util';
 import minimist from 'minimist';
-import {ExtrinsicHelper, initialize, IntentBuilder} from '../scaffolding';
+import { ExtrinsicHelper, initialize, IntentBuilder } from '../scaffolding';
 
 function getDevTestConfig(schemaMap: Record<number, SchemaConfig>, keySchemaId: number): Config {
   const config: Config = {} as Config;

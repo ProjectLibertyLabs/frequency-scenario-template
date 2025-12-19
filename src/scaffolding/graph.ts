@@ -7,7 +7,7 @@ import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.
 import { Schema } from './schema.js';
 import { SchemaBuilder } from './schema-builder.js';
 import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
-import {IntentBuilder} from "#app/scaffolding/intent-builder";
+import { IntentBuilder } from '#app/scaffolding/intent-builder';
 
 let publicGraphKeySchema: Schema;
 
@@ -26,9 +26,7 @@ export async function fetchPublicKeySchema(): Promise<void> {
     return;
   }
 
-  const intent = await new IntentBuilder()
-      .withName('dsnp', 'public-key-key-agreement')
-      .resolve();
+  const intent = await new IntentBuilder().withName('dsnp', 'public-key-key-agreement').resolve();
   if (!intent) {
     throw new Error('dsnp.public-key-key-agreement intent not resolved');
   }
@@ -37,9 +35,7 @@ export async function fetchPublicKeySchema(): Promise<void> {
     throw new Error('dsnp.public-key-key-agreement intent has no schemas');
   }
 
-  const schema = await new SchemaBuilder()
-    .withExistingSchemaId(intent.schemas[intent.schemas.length])
-    .resolve();
+  const schema = await new SchemaBuilder().withExistingSchemaId(intent.schemas[intent.schemas.length]).resolve();
   if (!schema) {
     throw new Error('dsnp.public-key-key-agreement schema not resolved');
   }

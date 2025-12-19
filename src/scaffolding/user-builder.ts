@@ -1,20 +1,13 @@
-import {IntentId, MessageSourceId} from '@frequency-chain/api-augment/interfaces';
+import { IntentId, MessageSourceId } from '@frequency-chain/api-augment/interfaces';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { AnyNumber } from '@polkadot/types/types';
 import log from 'loglevel';
 import { firstValueFrom } from 'rxjs';
 import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
-import {
-  generateAddKeyPayload,
-  generateClaimHandlePayload,
-  generateDelegationPayload,
-  getDefaultFundingSource,
-  getExistentialDeposit,
-  signPayloadSr25519
-} from './helpers.js';
+import { generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, getExistentialDeposit, signPayloadSr25519 } from './helpers.js';
 import { apiCreateKeys } from './apiConnection.js';
-import {Builder} from "#app/scaffolding/builder";
+import { Builder } from '#app/scaffolding/builder';
 
 interface IUserBuilder {
   keyUris?: string[];
@@ -32,7 +25,7 @@ interface IUserBuilder {
 
 export class UserBuilder extends Builder<IUserBuilder, typeof User> {
   public resolve(): Promise<User | undefined> {
-      throw new Error('Method not implemented.');
+    throw new Error('Method not implemented.');
   }
   public get defaultKeypair(): KeyringPair {
     return this.values.allKeys![0];
@@ -207,28 +200,30 @@ export class UserBuilder extends Builder<IUserBuilder, typeof User> {
     }
 
     if ((this.values.allKeys?.length ?? 1) > 1) {
-      await Promise.all(this.values.allKeys?.slice(1)?.map(async (keys) => {
-        // Check if the key is already registered to this or another MSA
-        const keyId = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId(keys.publicKey);
-        if (keyId.isSome) {
-          if (keyId.unwrap().toString() === msaId.toString()) {
-            log.info(`Key ${keys.publicKey} already present in MSA ${msaId.toString()}`);
-          } else {
-            log.error(`Skipping key ${keys.address}; already belongs to MSA ${keyId.toString()}`);
+      await Promise.all(
+        this.values.allKeys?.slice(1)?.map(async (keys) => {
+          // Check if the key is already registered to this or another MSA
+          const keyId = await ExtrinsicHelper.apiPromise.query.msa.publicKeyToMsaId(keys.publicKey);
+          if (keyId.isSome) {
+            if (keyId.unwrap().toString() === msaId.toString()) {
+              log.info(`Key ${keys.publicKey} already present in MSA ${msaId.toString()}`);
+            } else {
+              log.error(`Skipping key ${keys.address}; already belongs to MSA ${keyId.toString()}`);
+            }
+            return;
           }
-          return;
-        }
-        const payload = await generateAddKeyPayload({
-          msaId,
-          newPublicKey: keys.publicKey,
-        });
-        const addKeyData = ExtrinsicHelper.api.registry.createType('PalletMsaAddKeyData', payload);
-        const ownerSig = signPayloadSr25519(this.defaultKeypair!, addKeyData);
-        const newSig = signPayloadSr25519(keys, addKeyData);
-        const op = ExtrinsicHelper.addPublicKeyToMsa(keys, ownerSig, newSig, payload);
-        await this.executeUserOp(op, new Error(`Failed to authorize new key for MSA ${msaId.toString()}`));
-        log.info(`Authorized new key ${keys.address} for MSA ${msaId.toString()}`);
-      }));
+          const payload = await generateAddKeyPayload({
+            msaId,
+            newPublicKey: keys.publicKey,
+          });
+          const addKeyData = ExtrinsicHelper.api.registry.createType('PalletMsaAddKeyData', payload);
+          const ownerSig = signPayloadSr25519(this.defaultKeypair!, addKeyData);
+          const newSig = signPayloadSr25519(keys, addKeyData);
+          const op = ExtrinsicHelper.addPublicKeyToMsa(keys, ownerSig, newSig, payload);
+          await this.executeUserOp(op, new Error(`Failed to authorize new key for MSA ${msaId.toString()}`));
+          log.info(`Authorized new key ${keys.address} for MSA ${msaId.toString()}`);
+        }),
+      );
     }
 
     const userParams: IUser = {

@@ -3,7 +3,7 @@
  * and do a basic chain operation.
  */
 
-import {createKeys, devAccounts, ExtrinsicHelper, getBlockNumber, initialize, stakeToProvider, User, UserBuilder} from '../scaffolding';
+import { createKeys, devAccounts, ExtrinsicHelper, getBlockNumber, initialize, stakeToProvider, User, UserBuilder } from '../scaffolding';
 
 const firstNames = [
   'Aaliyah',

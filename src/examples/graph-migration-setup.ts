@@ -3,23 +3,13 @@
  * and do a basic chain operation.
  */
 // Examples do not require all dependencies for examples
-import {
-  AddGraphKeyAction,
-  AddKeyUpdate,
-  ConnectAction,
-  ConnectionType,
-  DsnpKeys,
-  EnvironmentType,
-  Graph,
-  KeyData,
-  PrivacyType,
-} from '@projectlibertylabs/graph-sdk';
+import { AddGraphKeyAction, AddKeyUpdate, ConnectAction, ConnectionType, DsnpKeys, EnvironmentType, Graph, KeyData, PrivacyType } from '@projectlibertylabs/graph-sdk';
 import log from 'loglevel';
-import {ItemizedStoragePageResponse, PaginatedStorageResponse} from '@frequency-chain/api-augment/interfaces';
-import {hexToU8a} from '@polkadot/util';
-import {Option} from '@polkadot/types';
-import {PalletCapacityCapacityDetails} from '@polkadot/types/lookup';
-import {devAccounts, ExtrinsicHelper, initialize, User, UserBuilder} from '../scaffolding';
+import { ItemizedStoragePageResponse, PaginatedStorageResponse } from '@frequency-chain/api-augment/interfaces';
+import { hexToU8a } from '@polkadot/util';
+import { Option } from '@polkadot/types';
+import { PalletCapacityCapacityDetails } from '@polkadot/types/lookup';
+import { devAccounts, ExtrinsicHelper, initialize, User, UserBuilder } from '../scaffolding';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function createConnection(from: User, to: User, schemaId: number, toKeys?: { keys: KeyData[]; keysHash: number }): ConnectAction {

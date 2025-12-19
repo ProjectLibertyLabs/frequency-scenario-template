@@ -4,9 +4,9 @@
  */
 
 import minimist from 'minimist';
-import {mnemonicGenerate} from '@polkadot/util-crypto';
+import { mnemonicGenerate } from '@polkadot/util-crypto';
 import log from 'loglevel';
-import {ExtrinsicHelper, getDefaultFundingSource, initialize, UserBuilder} from '../scaffolding';
+import { ExtrinsicHelper, getDefaultFundingSource, initialize, UserBuilder } from '../scaffolding';
 
 async function main() {
   // Connect to chain & initialize API

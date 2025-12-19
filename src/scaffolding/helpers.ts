@@ -12,7 +12,8 @@ import {
   AddProviderPayload,
   ExtrinsicHelper,
   ItemizedSignaturePayloadV2,
-  PaginatedDeleteSignaturePayload, PaginatedUpsertSignaturePayloadV2
+  PaginatedDeleteSignaturePayload,
+  PaginatedUpsertSignaturePayloadV2,
 } from './extrinsicHelpers.js';
 import env from './env.js';
 import { apiCreateKeys } from './apiConnection.js';
@@ -131,7 +132,10 @@ export async function generateItemizedSignaturePayload(payloadInputs: ItemizedSi
   };
 }
 
-export async function generatePaginatedUpsertSignaturePayload(payloadInputs: PaginatedUpsertSignaturePayloadV2, expirationOffset?: number): Promise<PaginatedUpsertSignaturePayloadV2> {
+export async function generatePaginatedUpsertSignaturePayload(
+  payloadInputs: PaginatedUpsertSignaturePayloadV2,
+  expirationOffset?: number,
+): Promise<PaginatedUpsertSignaturePayloadV2> {
   // eslint-disable-next-line prefer-const
   let { expiration, ...payload } = payloadInputs;
   if (!expiration) {

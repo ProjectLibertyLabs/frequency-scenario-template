@@ -1,5 +1,5 @@
 import avsc from 'avsc';
-import {IIntent, IntentSettingStr, PayloadLocationStr} from "./intent";
+import { IIntent, IntentSettingStr, PayloadLocationStr } from './intent';
 
 export type ModelTypeStr = 'AvroBinary' | 'Parquet';
 

@@ -1,11 +1,11 @@
 import Keyring from '@polkadot/keyring';
-import {AnyNumber} from '@polkadot/types/types';
-import {colors, names, NumberDictionary, uniqueNamesGenerator} from 'unique-names-generator';
-import {Bytes} from '@polkadot/types';
-import {hexToU8a, u8aToHex, u8aWrapBytes} from '@polkadot/util';
-import {GraphKeyType} from '@projectlibertylabs/graph-sdk';
-import {KeyringPair} from '@polkadot/keyring/types';
-import {StringDecoder} from 'string_decoder';
+import { AnyNumber } from '@polkadot/types/types';
+import { colors, names, NumberDictionary, uniqueNamesGenerator } from 'unique-names-generator';
+import { Bytes } from '@polkadot/types';
+import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
+import { GraphKeyType } from '@projectlibertylabs/graph-sdk';
+import { KeyringPair } from '@polkadot/keyring/types';
+import { StringDecoder } from 'string_decoder';
 import {
   AddProviderPayload,
   batchWithCapacityAndWaitForExtrinsics,
@@ -14,9 +14,9 @@ import {
   getAddGraphKeyPayload,
   getCurrentPublicGraphKey,
   signPayloadSr25519,
-  Sr25519Signature
+  Sr25519Signature,
 } from '#app/scaffolding';
-import {ChainUser} from './types.js';
+import { ChainUser } from './types.js';
 
 const DEFAULT_GRAPH_SCHEMAS = [8, 9, 10];
 const DEFAULT_GRAPH_KEY_SCHEMA = 7;
