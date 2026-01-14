@@ -1,13 +1,13 @@
-import { AnyNumber } from '@polkadot/types/types';
-import { HexString } from '@polkadot/util/types';
-import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
-import { hexToU8a, u8aToHex } from '@polkadot/util';
-import { KeyringPair } from '@polkadot/keyring/types';
-import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.js';
-import { Schema } from './schema.js';
-import { SchemaBuilder } from './schema-builder.js';
-import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
-import { IntentBuilder } from './intent-builder';
+import {AnyNumber} from '@polkadot/types/types';
+import {HexString} from '@polkadot/util/types';
+import {ItemizedStoragePageResponse} from '@frequency-chain/api-augment/interfaces';
+import {hexToU8a, u8aToHex} from '@polkadot/util';
+import {KeyringPair} from '@polkadot/keyring/types';
+import {ExtrinsicHelper, ItemizedSignaturePayloadV2} from './extrinsicHelpers.js';
+import {Schema} from './schema.js';
+import {SchemaBuilder} from './schema-builder.js';
+import {Sr25519Signature, signPayloadSr25519} from './helpers.js';
+import {IntentBuilder} from './intent-builder';
 
 let publicGraphKeySchema: Schema;
 
@@ -22,25 +22,28 @@ let publicGraphKeySchema: Schema;
  * @returns {Promise<void>}
  */
 export async function fetchPublicKeySchema(): Promise<void> {
-  if (publicGraphKeySchema) {
-    return;
-  }
+    if (publicGraphKeySchema) {
+        return;
+    }
 
-  const intent = await new IntentBuilder().withName('dsnp', 'public-key-key-agreement').resolve();
-  if (!intent) {
-    throw new Error('dsnp.public-key-key-agreement intent not resolved');
-  }
+    const intent = await new IntentBuilder().withAutoDetectExisting(true).withName('dsnp', 'public-key-key-agreement').resolve();
+    if (!intent) {
+        throw new Error('dsnp.public-key-key-agreement intent not resolved');
+    }
 
-  if (!intent.schemas || intent.schemas.length === 0) {
-    throw new Error('dsnp.public-key-key-agreement intent has no schemas');
-  }
+    if (!intent.schemas || intent.schemas.length === 0) {
+        throw new Error('dsnp.public-key-key-agreement intent has no schemas');
+    }
 
-  const schema = await new SchemaBuilder().withExistingSchemaId(intent.schemas[intent.schemas.length]).resolve();
-  if (!schema) {
-    throw new Error('dsnp.public-key-key-agreement schema not resolved');
-  }
+    // Check again to avoid redundant lookup race condition due to async
+    if (!publicGraphKeySchema) {
+        const schema = await new SchemaBuilder().withExistingSchemaId(intent.schemas[intent.schemas.length - 1]).resolve();
+        if (!schema) {
+            throw new Error('dsnp.public-key-key-agreement schema not resolved');
+        }
 
-  publicGraphKeySchema = schema;
+        publicGraphKeySchema = schema;
+    }
 }
 
 /**
@@ -52,14 +55,20 @@ export async function fetchPublicKeySchema(): Promise<void> {
  * @returns {Promise<[HexString | undefined, number]>}
  */
 export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexString | undefined, number]> {
-  await fetchPublicKeySchema();
-  const itemizedPageResponse: ItemizedStoragePageResponse = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msaId, publicGraphKeySchema?.id);
-  const currentKeyPayload = itemizedPageResponse.items.pop();
-  if (!currentKeyPayload) {
-    return [undefined, itemizedPageResponse.content_hash.toNumber()];
-  }
-  const { publicKey } = publicGraphKeySchema.fromBuffer(Buffer.from(hexToU8a(currentKeyPayload.payload.toHex())));
-  return [u8aToHex(publicKey), itemizedPageResponse.content_hash.toNumber()];
+    await fetchPublicKeySchema();
+    const itemizedPageResponse: ItemizedStoragePageResponse = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msaId, publicGraphKeySchema?.id);
+    const currentKeyPayload = itemizedPageResponse.items.pop();
+    if (!currentKeyPayload) {
+        return [undefined, itemizedPageResponse.content_hash.toNumber()];
+    }
+    let publicKey: any;
+    try {
+        ({publicKey} = publicGraphKeySchema.fromBuffer(Buffer.from(currentKeyPayload.payload.toU8a(true))));
+    } catch (e: any) {
+        console.log('Failed to parse public graph key from storage: ', currentKeyPayload.payload.toU8a());
+        throw e;
+    }
+    return [u8aToHex(publicKey), itemizedPageResponse.content_hash.toNumber()];
 }
 
 /**
@@ -73,35 +82,35 @@ export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexSt
  * @returns {Promise<{ payload: ItemizedSignaturePayloadV2, proof: Sr25519Signature }>}
  */
 export async function getAddGraphKeyPayload(
-  publicKey: HexString,
-  signingKeys: KeyringPair,
-  targetHash: number,
-  currentBlock?: number,
+    publicKey: HexString,
+    signingKeys: KeyringPair,
+    targetHash: number,
+    currentBlock?: number,
 ): Promise<{ payload: ItemizedSignaturePayloadV2; proof: Sr25519Signature }> {
-  const keyString = publicKey.replace(/^0x/, '');
-  const graphKey = {
-    publicKey: Buffer.from(keyString, 'hex'),
-  };
+    const keyString = publicKey.replace(/^0x/, '');
+    const graphKey = {
+        publicKey: Buffer.from(keyString, 'hex'),
+    };
 
-  await fetchPublicKeySchema();
-  const graphKeyBuffer = publicGraphKeySchema.toBuffer(graphKey);
+    await fetchPublicKeySchema();
+    const graphKeyBuffer = publicGraphKeySchema.toBuffer(graphKey);
 
-  const addAction = [
-    {
-      Add: {
-        data: u8aToHex(graphKeyBuffer),
-      },
-    },
-  ];
+    const addAction = [
+        {
+            Add: {
+                data: u8aToHex(graphKeyBuffer),
+            },
+        },
+    ];
 
-  const graphKeyAction: any = {
-    targetHash,
-    schemaId: publicGraphKeySchema.id,
-    actions: addAction,
-  };
-  const currentBlockNumber = currentBlock || (await ExtrinsicHelper.apiPromise.rpc.chain.getBlock()).block.header.number.toNumber();
-  graphKeyAction.expiration = currentBlockNumber + ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
-  const payloadBytes = ExtrinsicHelper.api.registry.createType('PalletStatefulStorageItemizedSignaturePayloadV2', graphKeyAction);
-  const proof = signPayloadSr25519(signingKeys, payloadBytes);
-  return { payload: { ...graphKeyAction }, proof };
+    const graphKeyAction: any = {
+        targetHash,
+        schemaId: publicGraphKeySchema.id,
+        actions: addAction,
+    };
+    const currentBlockNumber = currentBlock || (await ExtrinsicHelper.apiPromise.rpc.chain.getBlock()).block.header.number.toNumber();
+    graphKeyAction.expiration = currentBlockNumber + ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
+    const payloadBytes = ExtrinsicHelper.api.registry.createType('PalletStatefulStorageItemizedSignaturePayloadV2', graphKeyAction);
+    const proof = signPayloadSr25519(signingKeys, payloadBytes);
+    return {payload: {...graphKeyAction}, proof};
 }

@@ -37,7 +37,7 @@ export class SchemaBuilder extends BuilderWithName<ISchemaBuilder, typeof Schema
       schemaResponse = {
         id: response.schemaId.toNumber(),
         intentId: response.intentId.toNumber(),
-        model: response.model.toU8a(),
+        model: Buffer.from(response.model.toU8a(true)).toString(),
         modelType: 'AvroBinary',
         payloadLocation: 'OnChain',
       };
@@ -52,7 +52,7 @@ export class SchemaBuilder extends BuilderWithName<ISchemaBuilder, typeof Schema
     if (this.values.id === undefined) {
       // If a name is present, use it to look up the associated Intent and get its latest schema
       if (this.values.name) {
-        const intent = await new IntentBuilder({ name: this.values.name }).resolve();
+        const intent = await new IntentBuilder().withName(this.values.name).withAutoDetectExisting(true).resolve();
         if (!intent) {
           throw new Error(`Schema resolution error: unable to resolve Intent with name ${this.values.name}`);
         }

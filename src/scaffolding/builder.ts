@@ -51,7 +51,7 @@ export abstract class Builder<IFace extends BuilderIFace, ClassType extends CTor
 }
 
 export abstract class BuilderWithName<IFace extends BuilderWithNameIFace, ClassType extends CTor> extends Builder<IFace, ClassType> {
-  public withName(protocolName: string, descriptorName: string): this {
-    return this.withProperty('name', `${protocolName}.${descriptorName}`);
+  public withName(protocolName: string, descriptorName?: string): this {
+    return this.withProperty('name', descriptorName ? `${protocolName}.${descriptorName}` : protocolName);
   }
 }

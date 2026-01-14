@@ -18,12 +18,13 @@ export class Intent implements IIntent {
 
   private readonly _settings: IntentSettingStr[];
 
-  private readonly _schemas?: number[];
+  private readonly _schemas: number[];
 
   constructor(source: IIntent) {
     this._payloadLocation = source.payloadLocation;
     this._settings = source.settings ?? [];
     this._id = source.id;
+    this._schemas = source.schemas ?? [];
   }
 
   public get id() {
@@ -47,6 +48,6 @@ export class Intent implements IIntent {
   }
 
   public get latestSchema() {
-    return this._schemas && this._schemas.length > 0 ? this._schemas[this._schemas.length - 1] : undefined;
+    return this._schemas.length > 0 ? this._schemas[this._schemas.length - 1] : undefined;
   }
 }

@@ -15,7 +15,7 @@ import {
   getCurrentPublicGraphKey,
   signPayloadSr25519,
   Sr25519Signature,
-} from '#app/scaffolding';
+} from '../scaffolding';
 import { ChainUser } from './types.js';
 
 const DEFAULT_GRAPH_INTENTS = [8, 9, 10];
