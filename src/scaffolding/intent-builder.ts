@@ -4,7 +4,7 @@ import { AnyNumber } from '@polkadot/types/types';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ExtrinsicHelper } from './extrinsicHelpers.js';
 import { IIntent, Intent, IntentSettingStr, PayloadLocationStr } from './intent';
-import { BuilderWithName } from '#app/scaffolding/builder';
+import { BuilderWithName } from './builder';
 
 export interface IIntentBuilder {
   id?: IntentId | AnyNumber;

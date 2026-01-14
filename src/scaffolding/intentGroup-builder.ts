@@ -2,7 +2,7 @@ import '@frequency-chain/api-augment';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ExtrinsicHelper } from './extrinsicHelpers.js';
 import { IIntentGroup, IntentGroup } from './intentGroup';
-import { BuilderWithName } from '#app/scaffolding/builder';
+import { BuilderWithName } from './builder';
 
 export interface IIntentGroupBuilder {
   id?: number;
