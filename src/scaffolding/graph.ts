@@ -7,7 +7,7 @@ import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.
 import { Schema } from './schema.js';
 import { SchemaBuilder } from './schema-builder.js';
 import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
-import { IntentBuilder } from '#app/scaffolding/intent-builder';
+import { IntentBuilder } from './intent-builder';
 
 let publicGraphKeySchema: Schema;
 

@@ -7,7 +7,7 @@ import { IUser, User } from './user.js';
 import { Extrinsic, ExtrinsicHelper } from './extrinsicHelpers.js';
 import { generateAddKeyPayload, generateClaimHandlePayload, generateDelegationPayload, getDefaultFundingSource, getExistentialDeposit, signPayloadSr25519 } from './helpers.js';
 import { apiCreateKeys } from './apiConnection.js';
-import { Builder } from '#app/scaffolding/builder';
+import { Builder } from './builder';
 
 interface IUserBuilder {
   keyUris?: string[];
