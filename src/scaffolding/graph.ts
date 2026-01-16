@@ -1,7 +1,7 @@
 import { AnyNumber } from '@polkadot/types/types';
 import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
-import { hexToU8a, u8aToHex } from '@polkadot/util';
+import { u8aToHex } from '@polkadot/util';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.js';
 import { Schema } from './schema.js';

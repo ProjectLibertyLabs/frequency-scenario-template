@@ -86,7 +86,13 @@ export class SchemaBuilder extends BuilderWithName<ISchemaBuilder, typeof Schema
   }
 
   public async build(creatorKeys: KeyringPair): Promise<Schema> {
-    const schema = await this.resolve();
+    let schema: Schema | undefined;
+    try {
+      schema = await this.resolve();
+    } catch (_e) {
+      // do nothing
+    }
+
     if (schema) {
       return schema;
     }

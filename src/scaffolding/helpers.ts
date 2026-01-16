@@ -34,8 +34,8 @@ export const CENTS = 1000000n;
 export const DOLLARS = 100n * CENTS;
 export const CHAIN_ENVIRONMENT = {
   DEVELOPMENT: 'dev',
-  ROCOCO_TESTNET: 'rococo-testnet',
-  ROCOCO_LOCAL: 'rococo-local',
+  PASEO_TESTNET: 'paseo-testnet',
+  PASEO_LOCAL: 'paseo-local',
 };
 
 let cacheED: null | bigint = null;
@@ -48,16 +48,16 @@ export function getExistentialDeposit(): bigint {
 export async function initialize(uri?: string): Promise<void> {
   await ExtrinsicHelper.initialize(uri);
 
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
+  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.PASEO_TESTNET) {
     const seedPhrase = process.env.FUNDING_ACCOUNT_SEED_PHRASE;
 
     if (seedPhrase === undefined) {
-      console.error('FUNDING_ACCOUNT_SEED_PHRASE must not be undefined when CHAIN_ENVIRONMENT is "rococo"');
+      console.error(`FUNDING_ACCOUNT_SEED_PHRASE must not be undefined when CHAIN_ENVIRONMENT is "${CHAIN_ENVIRONMENT.PASEO_TESTNET}"`);
       process.exit(1);
     }
 
     devAccounts.push({
-      uri: 'RococoTestRunnerAccount',
+      uri: 'PaseoTestRunnerAccount',
       keys: apiCreateKeys(seedPhrase),
     });
   } else {
@@ -101,12 +101,7 @@ export async function generateClaimHandlePayload(name: string, expirationOffset 
   return ExtrinsicHelper.api.registry.createType('CommonPrimitivesHandlesClaimHandlePayload', payload);
 }
 
-export async function generateAddKeyPayload(
-  payloadInputs: AddKeyData,
-
-  expirationOffset: number = 100,
-  blockNumber?: number,
-): Promise<AddKeyData> {
+export async function generateAddKeyPayload(payloadInputs: AddKeyData, expirationOffset: number = 100, blockNumber?: number): Promise<AddKeyData> {
   // eslint-disable-next-line prefer-const
   let { expiration, ...payload } = payloadInputs;
   if (!expiration) {
@@ -237,14 +232,14 @@ export async function createDelegator(): Promise<[KeyringPair, u64]> {
   return [keys, delegatorMsaId];
 }
 
-export async function createDelegatorAndDelegation(schemaId: u16, providerId: u64, providerKeys: KeyringPair): Promise<[KeyringPair, u64]> {
+export async function createDelegatorAndDelegation(intentId: u16, providerId: u64, providerKeys: KeyringPair): Promise<[KeyringPair, u64]> {
   // Create a  delegator msa
   const [keys, delegatorMsaId] = await createDelegator();
 
   // Grant delegation to the provider
   const payload = await generateDelegationPayload({
     authorizedMsaId: providerId,
-    intentIds: [schemaId],
+    intentIds: [intentId],
   });
   const addProviderData = ExtrinsicHelper.api.registry.createType('PalletMsaAddProvider', payload);
 
@@ -254,13 +249,13 @@ export async function createDelegatorAndDelegation(schemaId: u16, providerId: u6
   return [keys, delegatorMsaId];
 }
 
-export async function getCurrentItemizedHash(msaId: MessageSourceId, schemaId: u16): Promise<PageHash> {
-  const result = await ExtrinsicHelper.getItemizedStorage(msaId, schemaId);
+export async function getCurrentItemizedHash(msaId: MessageSourceId, intentId: u16): Promise<PageHash> {
+  const result = await ExtrinsicHelper.getItemizedStorage(msaId, intentId);
   return result.content_hash;
 }
 
-export async function getCurrentPaginatedHash(msaId: MessageSourceId, schemaId: u16, pageId: number): Promise<u32> {
-  const result = await ExtrinsicHelper.getPaginatedStorage(msaId, schemaId);
+export async function getCurrentPaginatedHash(msaId: MessageSourceId, intentId: u16, pageId: number): Promise<u32> {
+  const result = await ExtrinsicHelper.getPaginatedStorage(msaId, intentId);
   const pageResponse = result.filter((page) => page.page_id.toNumber() === pageId);
   if (pageResponse.length <= 0) {
     return new u32(ExtrinsicHelper.api.registry, 0);
@@ -270,8 +265,7 @@ export async function getCurrentPaginatedHash(msaId: MessageSourceId, schemaId: 
 }
 
 export async function getHandleForMsa(msaId: MessageSourceId): Promise<Option<HandleResponse>> {
-  const result = await ExtrinsicHelper.getHandleForMSA(msaId);
-  return result;
+  return ExtrinsicHelper.getHandleForMSA(msaId);
 }
 
 // Creates an MSA and a provider for the given keys
@@ -316,19 +310,6 @@ export async function getNextEpochBlock() {
 export async function setEpochLength(keys: KeyringPair, epochLength: number): Promise<void> {
   const setEpochLengthOp = ExtrinsicHelper.setEpochLength(keys, epochLength);
   await setEpochLengthOp.sudoSignAndSend();
-}
-
-export async function getOrCreateDummySchema(): Promise<u16> {
-  if (process.env.CHAIN_ENVIRONMENT === CHAIN_ENVIRONMENT.ROCOCO_TESTNET) {
-    const ROCOCO_DUMMY_SCHEMA_ID: u16 = new u16(ExtrinsicHelper.api.registry, 52);
-    return ROCOCO_DUMMY_SCHEMA_ID;
-  }
-  const createDummySchema = ExtrinsicHelper.createSchema(devAccounts[0].keys, { type: 'record', name: 'Dummy on-chain schema', fields: [] }, 'AvroBinary', 'OnChain');
-  const [dummySchemaEvent] = await createDummySchema.fundAndSend();
-  if (dummySchemaEvent && createDummySchema.api.events.schemas.SchemaCreated.is(dummySchemaEvent)) {
-    return dummySchemaEvent.data.schemaId;
-  }
-  return Promise.reject(new Error('failed to create a schema'));
 }
 
 export const TokenPerCapacity = 50n;

@@ -95,7 +95,13 @@ export class IntentBuilder extends BuilderWithName<IIntentBuilder, typeof Intent
   }
 
   public async build(creatorKeys: KeyringPair): Promise<Intent> {
-    const intent = await this.resolve();
+    let intent: Intent | undefined;
+    try {
+      intent = await this.resolve();
+    } catch (_e) {
+      // do nothing
+    }
+
     if (intent) {
       return intent;
     }
