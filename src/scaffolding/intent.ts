@@ -3,7 +3,7 @@ export type IntentSettingStr = 'AppendOnly' | 'SignatureRequired';
 
 export interface IIntent {
   id: number;
-  name?: string;
+  name: string;
   payloadLocation: PayloadLocationStr;
   settings: IntentSettingStr[];
   schemas?: number[];
@@ -21,6 +21,7 @@ export class Intent implements IIntent {
   private readonly _schemas: number[];
 
   constructor(source: IIntent) {
+    this._name = source.name;
     this._payloadLocation = source.payloadLocation;
     this._settings = source.settings ?? [];
     this._id = source.id;

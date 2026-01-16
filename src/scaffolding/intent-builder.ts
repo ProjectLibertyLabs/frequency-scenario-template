@@ -5,6 +5,9 @@ import { KeyringPair } from '@polkadot/keyring/types';
 import { ExtrinsicHelper } from './extrinsicHelpers.js';
 import { IIntent, Intent, IntentSettingStr, PayloadLocationStr } from './intent';
 import { BuilderWithName } from './builder';
+import { u8aToString } from '@polkadot/util';
+import type { CommonPrimitivesSchemaMappedEntityIdentifier } from '@polkadot/types/lookup';
+import { Bytes, StorageKey } from '@polkadot/types';
 
 export interface IIntentBuilder {
   id?: IntentId | AnyNumber;
@@ -23,6 +26,21 @@ export class IntentBuilder extends BuilderWithName<IIntentBuilder, typeof Intent
 
   public withExistingIntentId(id: IntentId | AnyNumber): IntentBuilder {
     return new IntentBuilder({ id });
+  }
+
+  private static async getNameForIntentId(intentId: number): Promise<string | undefined> {
+    // Resolve the name of the Intent
+    const nameResponse: [StorageKey<[Bytes, Bytes]>, CommonPrimitivesSchemaMappedEntityIdentifier][] =
+      (await ExtrinsicHelper.apiPromise.query.schemas.nameToMappedEntityIds.entries()) as unknown as [StorageKey<[Bytes, Bytes]>, CommonPrimitivesSchemaMappedEntityIdentifier][];
+    const entry = nameResponse.find(([_, value]) => {
+      return intentId === value.asIntent.toNumber();
+    });
+    if (entry) {
+      const [protocol, descriptor] = entry[0].args.map((arg) => u8aToString(arg.toU8a()));
+      return `${protocol}:${descriptor}`;
+    }
+
+    return undefined;
   }
 
   private static async fetchAndCacheIntent(intentId: number | string): Promise<IIntent | undefined> {
@@ -45,8 +63,13 @@ export class IntentBuilder extends BuilderWithName<IIntentBuilder, typeof Intent
         const response = await ExtrinsicHelper.apiPromise.call.schemasRuntimeApi.getIntentById(id, true);
         if (response.isSome) {
           const intent = response.unwrap();
+          const name = await IntentBuilder.getNameForIntentId(intent.intentId.toNumber());
+          if (!name) {
+            throw new Error(`Unable to resolve name for Intent with id ${intent.intentId.toNumber()}`);
+          }
           intentResponse = {
             id: intent.intentId.toNumber(),
+            name,
             payloadLocation: intent.payloadLocation.type,
             settings: intent.settings.toArray().map((setting) => setting.type),
             schemas: intent.schemaIds.unwrapOrDefault().map((schemaId) => schemaId.toNumber()),
@@ -86,8 +109,13 @@ export class IntentBuilder extends BuilderWithName<IIntentBuilder, typeof Intent
       throw new Error(`No Intent with id ${this.values.id}`);
     }
     const intent = response.unwrap();
+    const name = await IntentBuilder.getNameForIntentId(intent.intentId.toNumber());
+    if (!name) {
+      throw new Error(`Unable to resolve name for Intent with id ${intent.intentId.toNumber()}`);
+    }
     return new Intent({
       id: intent.intentId.toNumber(),
+      name,
       payloadLocation: intent.payloadLocation.type,
       settings: intent.settings.toArray().map((setting) => setting.type),
       schemas: intent.schemaIds.unwrapOrDefault().map((schemaId) => schemaId.toNumber()),
@@ -98,8 +126,8 @@ export class IntentBuilder extends BuilderWithName<IIntentBuilder, typeof Intent
     let intent: Intent | undefined;
     try {
       intent = await this.resolve();
-    } catch (_e) {
-      // do nothing
+    } catch (e: any) {
+      console.warn(`Unable to resolve Intent with name ${this.values.name}. Will attempt to create a new Intent instead.`);
     }
 
     if (intent) {
