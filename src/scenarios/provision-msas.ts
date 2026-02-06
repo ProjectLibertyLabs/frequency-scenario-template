@@ -1,21 +1,27 @@
 import Keyring from '@polkadot/keyring';
 import { AnyNumber } from '@polkadot/types/types';
-import { uniqueNamesGenerator, names, colors, NumberDictionary } from 'unique-names-generator';
+import { colors, names, NumberDictionary, uniqueNamesGenerator } from 'unique-names-generator';
 import { Bytes } from '@polkadot/types';
 import { hexToU8a, u8aToHex, u8aWrapBytes } from '@polkadot/util';
 import { GraphKeyType } from '@projectlibertylabs/graph-sdk';
 import { KeyringPair } from '@polkadot/keyring/types';
 import { StringDecoder } from 'string_decoder';
-import { ChainEventHandler, batchWithCapacityAndWaitForExtrinsics } from '../scaffolding/transactions.js';
-import { getAddGraphKeyPayload, getCurrentPublicGraphKey } from '../scaffolding/graph.js';
-import { AddProviderPayload, ExtrinsicHelper } from '../scaffolding/extrinsicHelpers.js';
-import { Sr25519Signature, signPayloadSr25519 } from '../scaffolding/helpers.js';
+import {
+  AddProviderPayload,
+  batchWithCapacityAndWaitForExtrinsics,
+  ChainEventHandler,
+  ExtrinsicHelper,
+  getAddGraphKeyPayload,
+  getCurrentPublicGraphKey,
+  signPayloadSr25519,
+  Sr25519Signature,
+} from '../scaffolding';
 import { ChainUser } from './types.js';
 
-const DEFAULT_GRAPH_SCHEMAS = [8, 9, 10];
-const DEFAULT_GRAPH_KEY_SCHEMA = 7;
-const DEFAULT_PROFILE_SCHEMA = 5;
-const DEFAULT_SCHEMAS_TO_GRANT = [DEFAULT_PROFILE_SCHEMA, DEFAULT_GRAPH_KEY_SCHEMA, ...DEFAULT_GRAPH_SCHEMAS];
+const DEFAULT_GRAPH_INTENTS = [8, 9, 10];
+const DEFAULT_GRAPH_KEY_INTENT = 7;
+const DEFAULT_PROFILE_INTENT = 5;
+const DEFAULT_INTENTS_TO_GRANT = [DEFAULT_PROFILE_INTENT, DEFAULT_GRAPH_KEY_INTENT, ...DEFAULT_GRAPH_INTENTS];
 const keyring = new Keyring({ type: 'sr25519' });
 const wellKnownGraphKeypair = {
   publicKey: '0x0514f63edc89d414061bf451cc99b1f2b43fac920c351be60774559a31523c75',
@@ -64,7 +70,7 @@ async function resolveUsersFromChain(users: ChainUser[]): Promise<void> {
  *
  * @param {string} baseSeed - Seed phrase/uri to use as a derivation base for the keypair
  * @param {number} numUsers - number of users to create
- * @returns {Promise<ChainUser[]>} An array of initialize users
+ * @returns {Promise<ChainUser[]>} An array of initialized users
  */
 export async function initializeLocalUsers(baseSeed: string, numUsers: number): Promise<ChainUser[]> {
   process.stdout.write(`Creating keypairs for ${numUsers} accounts... `);
@@ -79,7 +85,7 @@ export async function initializeLocalUsers(baseSeed: string, numUsers: number): 
 }
 
 /**
- * Convenience method to get current block number.
+ * Convenience method to get the current block number.
  *
  * @returns {Promise<number>} Current block number
  */
@@ -95,19 +101,19 @@ export async function getCurrentBlockNumber(): Promise<number> {
  * @param {ChainUser} user - ChainUser object containing the keys to be used in signing the payload
  * @param {ChainUser} provider - ChainUser object containing the Provider ID to be authorized in the delegation
  * @param {number} currentBlockNumber - current block number to be used in determining expiration of the payload signature
- * @param {AnyNumber[]} schemaIds - Array of Schema IDs to be included in the Provider delegation
+ * @param {AnyNumber[]} intentIds - Array of Intent IDs to be included in the Provider delegation
  * @returns {{ payload: PalletMsaAddProvider, proof: Sr25519Signature }}
  */
 export function getAddProviderPayload(
   user: ChainUser,
   provider: ChainUser,
   currentBlockNumber: number,
-  schemaIds: AnyNumber[],
+  intentIds: AnyNumber[],
 ): { payload: AddProviderPayload; proof: Sr25519Signature } {
   const mortalityWindowSize = ExtrinsicHelper.apiPromise.consts.msa.mortalityWindowSize.toNumber();
   const addProvider: AddProviderPayload = {
     authorizedMsaId: provider.msaId,
-    schemaIds,
+    intentIds: intentIds,
     expiration: currentBlockNumber + mortalityWindowSize,
   };
   const payload = ExtrinsicHelper.apiPromise.registry.createType('PalletMsaAddProvider', addProvider);
@@ -149,14 +155,14 @@ export function getClaimHandlePayload(user: ChainUser, handle: string, currentBl
 export async function provisionLocalUserCreationExtrinsics(
   provider: ChainUser,
   users: ChainUser[],
-  options?: { schemaIds?: AnyNumber[]; allocateHandle?: boolean },
+  options?: { intentIds?: AnyNumber[]; allocateHandle?: boolean },
 ): Promise<void> {
-  const { schemaIds, allocateHandle } = options || {};
+  const { intentIds, allocateHandle } = options || {};
   const currentBlock = await getCurrentBlockNumber();
   users
     .filter((u) => !u?.msaId)
     .forEach((u) => {
-      const { payload: addProviderPayload, proof } = getAddProviderPayload(u, provider, currentBlock, schemaIds ?? DEFAULT_SCHEMAS_TO_GRANT);
+      const { payload: addProviderPayload, proof } = getAddProviderPayload(u, provider, currentBlock, intentIds ?? DEFAULT_INTENTS_TO_GRANT);
 
       u.create = () => ExtrinsicHelper.apiPromise.tx.msa.createSponsoredAccountWithDelegation(u.keypair.publicKey, proof, addProviderPayload);
 
@@ -174,10 +180,10 @@ export async function provisionLocalUserCreationExtrinsics(
  * each detected graph page, create an extrinsic call to `deletePage`
  *
  * @param {ChainUser} users Array of users to have their graphs deleted
- * @param {AnyNumber[]} [schemaIds] Array of schemaIds for graphs to be cleared. (Defaut: DEFAULT_GRAPH_SCHEMAS)
+ * @param {AnyNumber[]} [intentIds] Array of Intent IDs for graphs to be cleared. (Default: DEFAULT_GRAPH_INTENTS)
  * @returns {Promise<void[]>}
  */
-export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumber[]): Promise<void[]> {
+export function provisionUserGraphResets(users: ChainUser[], intentIds?: AnyNumber[]): Promise<void[]> {
   return Promise.all(
     users.map(async (user) => {
       if (!user?.msaId) {
@@ -186,7 +192,7 @@ export function provisionUserGraphResets(users: ChainUser[], schemaIds?: AnyNumb
       const { msaId } = user;
 
       await Promise.all(
-        (schemaIds || DEFAULT_GRAPH_SCHEMAS).map(async (schemaId) => {
+        (intentIds || DEFAULT_GRAPH_INTENTS).map(async (schemaId) => {
           const pages = await ExtrinsicHelper.apiPromise.rpc.statefulStorage.getPaginatedStorage(user.msaId, schemaId);
           if (!user?.graphUpdates) {
             user.graphUpdates = [];
@@ -245,7 +251,7 @@ export async function provisionUserGraphEncryptionKeys(users: ChainUser[], useWe
 }
 
 /**
- * Execute previously-provisioned extrinsic call for an array of users on-chain, and await their completion.
+ * Execute previously provisioned extrinsic call for an array of users on-chain and await their completion.
  *
  * @param {KeyringPair} payorKeys - Signing keys for the account that will be submitting the transactions.
  * @param {ChainUser[]} users - Array of users to be provisioned on-chain

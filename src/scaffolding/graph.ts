@@ -1,12 +1,13 @@
 import { AnyNumber } from '@polkadot/types/types';
 import { HexString } from '@polkadot/util/types';
 import { ItemizedStoragePageResponse } from '@frequency-chain/api-augment/interfaces';
-import { hexToU8a, u8aToHex } from '@polkadot/util';
+import { u8aToHex } from '@polkadot/util';
 import { KeyringPair } from '@polkadot/keyring/types';
-import { ExtrinsicHelper, ItemizedSignaturePayload } from './extrinsicHelpers.js';
+import { ExtrinsicHelper, ItemizedSignaturePayloadV2 } from './extrinsicHelpers.js';
 import { Schema } from './schema.js';
 import { SchemaBuilder } from './schema-builder.js';
 import { Sr25519Signature, signPayloadSr25519 } from './helpers.js';
+import { IntentBuilder } from './intent-builder';
 
 let publicGraphKeySchema: Schema;
 
@@ -25,20 +26,24 @@ export async function fetchPublicKeySchema(): Promise<void> {
     return;
   }
 
-  // Bug on mainnet: schema 7 (public key) not named; need to specify the complete model to resolve
-  const schema = await new SchemaBuilder()
-    .withName('dsnp', 'public-key-key-agreement')
-    .withModelType('AvroBinary')
-    .withModel({ type: 'record', name: 'PublicKey', namespace: 'org.dsnp', fields: [{ name: 'publicKey', doc: 'Multicodec public key', type: 'bytes' }] })
-    .withPayloadLocation('Itemized')
-    .withAutoDetectExistingSchema(true)
-    .withSettings(['SignatureRequired', 'AppendOnly'])
-    .resolve();
-  if (!schema) {
-    throw new Error('dsnp.public-key-key-agreement schema not resolved');
+  const intent = await new IntentBuilder().withAutoDetectExisting(true).withName('dsnp', 'public-key-key-agreement').resolve();
+  if (!intent) {
+    throw new Error('dsnp.public-key-key-agreement intent not resolved');
   }
 
-  publicGraphKeySchema = schema;
+  if (!intent.schemas || intent.schemas.length === 0) {
+    throw new Error('dsnp.public-key-key-agreement intent has no schemas');
+  }
+
+  // Check again to avoid redundant lookup race condition due to async
+  if (!publicGraphKeySchema) {
+    const schema = await new SchemaBuilder().withExistingSchemaId(intent.schemas[intent.schemas.length - 1]).resolve();
+    if (!schema) {
+      throw new Error('dsnp.public-key-key-agreement schema not resolved');
+    }
+
+    publicGraphKeySchema = schema;
+  }
 }
 
 /**
@@ -56,7 +61,13 @@ export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexSt
   if (!currentKeyPayload) {
     return [undefined, itemizedPageResponse.content_hash.toNumber()];
   }
-  const { publicKey } = publicGraphKeySchema.fromBuffer(Buffer.from(hexToU8a(currentKeyPayload.payload.toHex())));
+  let publicKey: any;
+  try {
+    ({ publicKey } = publicGraphKeySchema.fromBuffer(Buffer.from(currentKeyPayload.payload.toU8a(true))));
+  } catch (e: any) {
+    console.log('Failed to parse public graph key from storage: ', currentKeyPayload.payload.toU8a());
+    throw e;
+  }
   return [u8aToHex(publicKey), itemizedPageResponse.content_hash.toNumber()];
 }
 
@@ -68,14 +79,14 @@ export async function getCurrentPublicGraphKey(msaId: AnyNumber): Promise<[HexSt
  * @param {KeyringPair} signingKeys MSA keypair to sign the payload with
  * @param {number} targetHash Last known content hash of the public key Itemized storage
  * @param {number} currentBlock Last known "current" block number to be used for computing payload expiration
- * @returns {Promise<{ payload: ItemizedSignaturePayload, proof: Sr25519Signature }>}
+ * @returns {Promise<{ payload: ItemizedSignaturePayloadV2, proof: Sr25519Signature }>}
  */
 export async function getAddGraphKeyPayload(
   publicKey: HexString,
   signingKeys: KeyringPair,
   targetHash: number,
   currentBlock?: number,
-): Promise<{ payload: ItemizedSignaturePayload; proof: Sr25519Signature }> {
+): Promise<{ payload: ItemizedSignaturePayloadV2; proof: Sr25519Signature }> {
   const keyString = publicKey.replace(/^0x/, '');
   const graphKey = {
     publicKey: Buffer.from(keyString, 'hex'),

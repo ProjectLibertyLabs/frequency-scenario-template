@@ -1,19 +1,19 @@
 import '@frequency-chain/api-augment';
 import { ApiPromise, ApiRx } from '@polkadot/api';
 import { ApiTypes, AugmentedEvent, SubmittableExtrinsic } from '@polkadot/api/types';
-import { Compact, u128, u16, u32, u64, Vec, Option } from '@polkadot/types';
+import { Compact, Option, u128, u16, u32, u64, Vec } from '@polkadot/types';
 import { FrameSystemAccountInfo, SpRuntimeDispatchError } from '@polkadot/types/lookup';
 import { AnyNumber, AnyTuple, Codec, IEvent, ISubmittableResult } from '@polkadot/types/types';
-import { firstValueFrom, filter, map, pipe, tap } from 'rxjs';
+import { filter, firstValueFrom, map, pipe, tap } from 'rxjs';
 import { CreatedBlock, DispatchError, Event, SignedBlock } from '@polkadot/types/interfaces';
 import { IsEvent } from '@polkadot/types/metadata/decorate/types';
 import {
   HandleResponse,
+  IntentId,
   ItemizedStoragePageResponse,
   MessageSourceId,
   PaginatedStorageResponse,
   PresumptiveSuffixesResponse,
-  SchemaId,
   SchemaResponse,
 } from '@frequency-chain/api-augment/interfaces';
 import { u8aToHex } from '@polkadot/util/u8a/toHex';
@@ -21,9 +21,10 @@ import { isArray, u8aWrapBytes } from '@polkadot/util';
 import type { Call } from '@polkadot/types/interfaces/runtime';
 import { KeyringPair } from '@polkadot/keyring/types';
 import util from 'util';
-import { connect, connectPromise } from './apiConnection.js';
-import { getBlockNumber, log, getDefaultFundingSource, Sr25519Signature, EXISTENTIAL_DEPOSIT } from './helpers.js';
-import { ModelTypeStr, PayloadLocationStr, SchemaSettingStr } from './schema.js';
+import { connect, connectPromise } from './apiConnection';
+import { getBlockNumber, getDefaultFundingSource, getExistentialDeposit, log, Sr25519Signature } from './helpers';
+import { ModelTypeStr } from './schema';
+import { IntentSettingStr, PayloadLocationStr } from './intent';
 
 export interface ReleaseSchedule {
   start: number;
@@ -37,35 +38,39 @@ export interface AddKeyData {
   expiration?: any;
   newPublicKey?: any;
 }
+
 export interface AddProviderPayload {
   authorizedMsaId?: MessageSourceId;
-  schemaIds?: SchemaId[] | AnyNumber[];
+  intentIds?: IntentId[] | AnyNumber[];
   expiration?: any;
 }
-export interface ItemizedSignaturePayload {
-  msaId?: u64;
-  schemaId?: u16;
-  targetHash?: u32;
-  expiration?: any;
-  actions?: any;
-}
+
 export interface ItemizedSignaturePayloadV2 {
   schemaId?: u16;
   targetHash?: u32;
   expiration?: any;
   actions?: any;
 }
-export interface PaginatedUpsertSignaturePayload {
-  msaId?: u64;
+
+export interface PaginatedUpsertSignaturePayloadV2 {
   schemaId?: u16;
   pageId?: u16;
   targetHash?: u32;
   expiration?: any;
   payload?: any;
 }
+
 export interface PaginatedDeleteSignaturePayload {
   msaId?: u64;
   schemaId?: u16;
+  pageId?: u16;
+  targetHash?: u32;
+  expiration?: any;
+}
+
+export interface PaginatedDeleteSignaturePayloadV2 {
+  msaId?: u64;
+  intentId?: u16;
   pageId?: u16;
   targetHash?: u32;
   expiration?: any;
@@ -140,7 +145,7 @@ function eventKey(event: Event): string {
  * a set of arbitrary indices. Should an object at any level of that querying be undefined, the helper
  * will throw an unchecked exception.
  *
- * To get type checking and cast a returned event as a specific event type, you can utilize TypeScripts
+ * To get type checking and cast a returned event as a specific event type, you can use TypeScript's
  * type guard functionality like so:
  *
  *      const msaCreatedEvent = events.defaultEvent;
@@ -160,11 +165,11 @@ type ParsedEvent<C extends Codec[] = Codec[], N = unknown> = IEvent<C, N>;
 export type ParsedEventResult = [any, EventMap];
 
 export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C extends Codec[] = Codec[], N = unknown> {
-  private event?: IsEvent<C, N>;
+  private readonly event?: IsEvent<C, N>;
 
   private extrinsic: () => SubmittableExtrinsic<'rxjs', T>;
 
-  private keys: KeyringPair;
+  private readonly keys: KeyringPair;
 
   public api: ApiRx;
 
@@ -224,15 +229,14 @@ export class Extrinsic<T extends ISubmittableResult = ISubmittableResult, C exte
   }
 
   public getCall(): Call {
-    const call = ExtrinsicHelper.api.createType('Call', this.extrinsic.call);
-    return call;
+    return ExtrinsicHelper.api.createType('Call', this.extrinsic.call);
   }
 
   async fundOperation(source?: KeyringPair) {
     const fundingSource = source || getDefaultFundingSource().keys;
 
     const [amount, accountInfo] = await Promise.all([this.getEstimatedTxFee(), ExtrinsicHelper.getAccountInfo(this.keys.address)]);
-    const freeBalance = BigInt(accountInfo.data.free.toString()) - EXISTENTIAL_DEPOSIT;
+    const freeBalance = BigInt(accountInfo.data.free.toString()) - getExistentialDeposit();
     if (amount > freeBalance) {
       await ExtrinsicHelper.transferFunds(fundingSource, this.keys, amount).signAndSend();
     }
@@ -341,41 +345,66 @@ export class ExtrinsicHelper {
     return new Extrinsic(() => ExtrinsicHelper.api.tx.balances.transferAllowDeath(dest.address, amount), keys, ExtrinsicHelper.api.events.balances.Transfer);
   }
 
-  /** Schema Extrinsics */
-  public static createSchema(keys: KeyringPair, model: any, modelType: ModelTypeStr, payloadLocation: PayloadLocationStr, grants?: SchemaSettingStr[], name?: string): Extrinsic {
+  /** Dev Schema Extrinsics */
+  public static createIntent(keys: KeyringPair, payloadLocation: PayloadLocationStr, settings: IntentSettingStr[], name: string): Extrinsic {
     // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
     // We'll just force to an actual PayloadLocation to resolve.
     const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
-    return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.schemas.createSchemaV3(JSON.stringify(model), modelType, payloadLocationReal, grants || [], name || null),
-      keys,
-      ExtrinsicHelper.api.events.schemas.SchemaCreated,
-    );
+    return new Extrinsic(() => ExtrinsicHelper.api.tx.schemas.createIntent(name, payloadLocationReal, settings), keys, ExtrinsicHelper.api.events.schemas.IntentCreated);
+  }
+
+  public static createIntentGroup(keys: KeyringPair, name: string, intentIds: AnyNumber[]): Extrinsic {
+    return new Extrinsic(() => ExtrinsicHelper.api.tx.schemas.createIntentGroup(name, intentIds), keys, ExtrinsicHelper.api.events.schemas.IntentGroupCreated);
+  }
+
+  public static updateIntentGroup(keys: KeyringPair, intentGroupId: AnyNumber, intentIds: AnyNumber[]): Extrinsic {
+    return new Extrinsic(() => ExtrinsicHelper.api.tx.schemas.updateIntentGroup(intentGroupId, intentIds), keys, ExtrinsicHelper.api.events.schemas.IntentGroupUpdated);
+  }
+
+  public static createSchema(keys: KeyringPair, model: any, modelType: ModelTypeStr, intentId: AnyNumber): Extrinsic {
+    return new Extrinsic(() => ExtrinsicHelper.api.tx.schemas.createSchemaV4(intentId, JSON.stringify(model), modelType), keys, ExtrinsicHelper.api.events.schemas.SchemaCreated);
   }
 
   /** Generic Schema Extrinsics */
-  public static createSchemaWithSettingsGov(
-    delegatorKeys: KeyringPair,
+  public static createIntentWithSettingsGov(
     keys: KeyringPair,
-    model: any,
-    modelType: ModelTypeStr,
-    payloadLocation: PayloadLocationStr,
-    schemaSettings: SchemaSettingStr[],
-    name?: string,
+    payloadLocation: 'OnChain' | 'IPFS' | 'Itemized' | 'Paginated',
+    settings: ('AppendOnly' | 'SignatureRequired')[],
+    intentName: string,
   ): Extrinsic {
-    // There's a stupid auto-generated discrepancy between the typedef and the extrinsic def in @frequency-chain/api-augment where one accepts 'IPFS' and the other accepts 'Ipfs'.
-    // We'll just force to an actual PayloadLocation to resolve.
-    const payloadLocationReal = ExtrinsicHelper.api.registry.createType('PayloadLocation', payloadLocation);
     return new Extrinsic(
-      () =>
-        ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV2(delegatorKeys.publicKey, JSON.stringify(model), modelType, payloadLocationReal, schemaSettings, name || null),
+      () => ExtrinsicHelper.api.tx.schemas.createIntentViaGovernance(keys.publicKey, payloadLocation, settings, intentName),
+      keys,
+      ExtrinsicHelper.api.events.schemas.IntentCreated,
+    );
+  }
+
+  public static createIntentGroupGov(keys: KeyringPair, intentGroupName: string, intentIds: AnyNumber[]): Extrinsic {
+    return new Extrinsic(
+      () => ExtrinsicHelper.api.tx.schemas.createIntentGroupViaGovernance(keys.publicKey, intentGroupName, intentIds),
+      keys,
+      ExtrinsicHelper.api.events.schemas.IntentGroupCreated,
+    );
+  }
+
+  public static updateIntentGroupGov(keys: KeyringPair, intentGroupId: AnyNumber, intentIds: AnyNumber[]): Extrinsic {
+    return new Extrinsic(
+      () => ExtrinsicHelper.api.tx.schemas.updateIntentGroupViaGovernance(keys.publicKey, intentGroupId, intentIds),
+      keys,
+      ExtrinsicHelper.api.events.schemas.IntentGroupUpdated,
+    );
+  }
+
+  public static createSchemaWithSettingsGov(delegatorKeys: KeyringPair, keys: KeyringPair, intentId: AnyNumber, model: any, modelType: ModelTypeStr): Extrinsic {
+    return new Extrinsic(
+      () => ExtrinsicHelper.api.tx.schemas.createSchemaViaGovernanceV3(delegatorKeys.publicKey, intentId, JSON.stringify(model), modelType),
       keys,
       ExtrinsicHelper.api.events.schemas.SchemaCreated,
     );
   }
 
   /** Get Schema RPC */
-  public static getSchema(schemaId: u16): Promise<Option<SchemaResponse>> {
+  public static getSchema(schemaId: AnyNumber): Promise<Option<SchemaResponse>> {
     return firstValueFrom(ExtrinsicHelper.api.rpc.schemas.getBySchemaId(schemaId));
   }
 
@@ -472,36 +501,36 @@ export class ExtrinsicHelper {
     );
   }
 
-  public static applyItemActionsWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: ItemizedSignaturePayload): Extrinsic {
+  public static applyItemActionsWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: ItemizedSignaturePayloadV2): Extrinsic {
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.statefulStorage.applyItemActionsWithSignature(delegatorKeys.publicKey, signature, payload),
+      () => ExtrinsicHelper.api.tx.statefulStorage.applyItemActionsWithSignatureV2(delegatorKeys.publicKey, signature, payload),
       providerKeys,
       ExtrinsicHelper.api.events.statefulStorage.ItemizedPageUpdated,
     );
   }
 
-  public static removePageWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: PaginatedDeleteSignaturePayload): Extrinsic {
+  public static removePageWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: PaginatedDeleteSignaturePayloadV2): Extrinsic {
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.statefulStorage.deletePageWithSignature(delegatorKeys.publicKey, signature, payload),
+      () => ExtrinsicHelper.api.tx.statefulStorage.deletePageWithSignatureV2(delegatorKeys.publicKey, signature, payload),
       providerKeys,
       ExtrinsicHelper.api.events.statefulStorage.PaginatedPageDeleted,
     );
   }
 
-  public static upsertPageWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: PaginatedUpsertSignaturePayload): Extrinsic {
+  public static upsertPageWithSignature(delegatorKeys: KeyringPair, providerKeys: KeyringPair, signature: Sr25519Signature, payload: PaginatedUpsertSignaturePayloadV2): Extrinsic {
     return new Extrinsic(
-      () => ExtrinsicHelper.api.tx.statefulStorage.upsertPageWithSignature(delegatorKeys.publicKey, signature, payload),
+      () => ExtrinsicHelper.api.tx.statefulStorage.upsertPageWithSignatureV2(delegatorKeys.publicKey, signature, payload),
       providerKeys,
       ExtrinsicHelper.api.events.statefulStorage.PaginatedPageUpdated,
     );
   }
 
-  public static getItemizedStorage(msa_id: MessageSourceId, schemaId: any): Promise<ItemizedStoragePageResponse> {
-    return firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getItemizedStorage(msa_id, schemaId));
+  public static getItemizedStorage(msa_id: MessageSourceId, intentId: any): Promise<ItemizedStoragePageResponse> {
+    return ExtrinsicHelper.apiPromise.rpc.statefulStorage.getItemizedStorage(msa_id, intentId);
   }
 
-  public static getPaginatedStorage(msa_id: MessageSourceId, schemaId: any): Promise<Vec<PaginatedStorageResponse>> {
-    return firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(msa_id, schemaId));
+  public static getPaginatedStorage(msa_id: MessageSourceId, intentId: any): Promise<Vec<PaginatedStorageResponse>> {
+    return firstValueFrom(ExtrinsicHelper.api.rpc.statefulStorage.getPaginatedStorage(msa_id, intentId));
   }
 
   public static timeReleaseTransfer(keys: KeyringPair, who: KeyringPair, schedule: ReleaseSchedule): Extrinsic {

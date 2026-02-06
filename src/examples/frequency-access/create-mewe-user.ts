@@ -1,6 +1,6 @@
 /*
  * Takes in the signup-response from Frequency Access signup request flow.
- * Paste the signup-response into the singup-response.json file.
+ * Paste the signup-response into the signup-response.json file.
  * Do not include the "response" wrapper object found in the sms flow
  */
 
@@ -38,7 +38,7 @@ async function main() {
   const msaId = new u64(ExtrinsicHelper.api.registry, response.addProviderPayload.authorizedMsaId);
   const addProviderPayload: AddProviderPayload = {
     authorizedMsaId: msaId,
-    schemaIds: response.addProviderPayload.schemaIds,
+    intentIds: response.addProviderPayload.intentIds,
     expiration: response.addProviderPayload.expiration,
   };
 
